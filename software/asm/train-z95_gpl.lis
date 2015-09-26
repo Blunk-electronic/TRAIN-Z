@@ -1,0 +1,3170 @@
+Z80-Assembler		Release 1.4				Page 1
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                       1      1 ;    This program is free software: you can redistribute it and/or modify
+                       2      2 ;    it under the terms of the GNU General Public License as published by
+                       3      3 ;    the Free Software Foundation, either version 3 of the License, or
+                       4      4 ;    (at your option) any later version.
+                       5      5 ;
+                       6      6 ;    This program is distributed in the hope that it will be useful,
+                       7      7 ;    but WITHOUT ANY WARRANTY; without even the implied warranty of
+                       8      8 ;    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+                       9      9 ;    GNU General Public License for more details.
+                      10     10 ;
+                      11     11 ;    You should have received a copy of the GNU General Public License
+                      12     12 ;    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+                      13     13 
+                      14     14 ;    Please send your questions and comments to:
+                      15     15 ;
+                      16     16 ;    MarioBlunk@arcor.de
+                      17     17 ;    or visit http://www.train-z.de for more contact data
+                      18     18 ;
+                      19     19 ;    history of changes:
+                      20     20 ;    Version 9.3 : - support of W29C020 FLASH EEPROM made by WINBOND
+                      21     21 ;    Version 9.5 : - support of W29C020 FLASH EEPROM made by WINBOND
+                      22     22 ;                  - improved serial communication, frequent turning on/off of RTS removed
+                      23     23 ;                    as confuses some serial controllers like Timedia Technology Co Ltd PCI2S550 (Dual 16550 UART) (rev 01)
+                      24     24 ;                  - checksum F1h
+                      25     25 
+                      26     26 
+                      27     27 ;OFFSET	equ	1800h
+                      28     28 ;OFFSET	equ	8000h
+0000                  29     29 OFFSET	equ	0000h
+                      30     30 
+                      31     31 
+0000                  32     32 CH0	equ	0h
+0001                  33     33 CH1	equ	1h
+0002                  34     34 CH2	equ	2h
+0003                  35     35 CH3	equ	3h
+                      36     36 
+0004                  37     37 SIO_A_D	equ	4h
+0006                  38     38 SIO_A_C	equ	6h
+0005                  39     39 SIO_B_D	equ	5h
+0007                  40     40 SIO_B_C	equ	7h
+                      41     41 
+0008                  42     42 PIO_A_D	equ	8h
+000a                  43     43 PIO_A_C	equ	0Ah
+0009                  44     44 PIO_B_D	equ	9h
+000b                  45     45 PIO_B_C	equ	0Bh
+                      46     46 
+1800                  47     47 RAM_BOT		equ	1800h+OFFSET	;lowest user RAM address
+                      48     48 
+1000                  49     49 RAM_DATA_STS	equ	1000h	;holds 1 after successful download in RAM area
+                      50     50 				;beginning at 1800h+OFFSET
+                      51     51 
+                      52     52 ;RAM_HID		equ	1000h		;lowest system RAM address
+1001                  53     53 SCRATCH		equ	1001h 	;used by various functions
+1002                  54     54 CMD_STS		equ	1002h	;holds status of cmd. 0=incomplete, 1=complete
+1003                  55     55 PIO_A_MODE	equ	1003h	;holds current PIO A mode
+1004                  56     56 PIO_A_IO_CONF	equ	1004h	;holds current IO configuration of PIO A
+                      57     57 
+1005                  58     58 PIO_B_MODE	equ	1005h	;holds current PIO B mode
+1006                  59     59 PIO_B_IO_CONF	equ	1006h	;holds current IO configuration of PIO B
+                      60     60 
+Z80-Assembler		Release 1.4				Page 2
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+1007                  61     61 RAM_TOP		equ	1007h	;here and at RAM_TOP+1 highest user RAM address stored
+                      62     62 			;1008h	;highbyte of highest user RAM address
+                      63     63 ;BLK_ERR		equ	1009h	;number of garbled blocks during download
+100b                  64     64 OUT_LEN		equ	100Bh	;holds length of output buffer (lowbyte)
+                      65     65 			;100Ch 	;holds length of output buffer (highbyte)
+100d                  66     66 ECHO_STS	equ	100Dh	;holds FFh if echo enabled, 0h if echo disabled
+                      67     67 
+100e                  68     68 TEMP3		equ	100Eh	;used by heartbeat
+                      69     69 
+100f                  70     70 SOURCE_ADR	equ	100Fh	;for flash programming: source address lowbyte
+                      71     71 			;1010h	;source address highbyte
+1011                  72     72 DEST_ADR	equ	1011h	;for flash programming: destination address lowbyte
+                      73     73 			;1012h	;destination address highbyte
+1013                  74     74 NUMB_OF_BYTES	equ	1013h	;for flash programming: number of bytes lowbyte
+                      75     75 			;1014h	;number of byte highbyte
+1015                  76     76 temp0		equ	1015h	;used by various functions, holds number of 
+                      77     77 				;unsuccessful block transfers/block during download
+                      78     78 			;1016h	;highbyte of temp0
+101c                  79     79 CMD_LEN 	equ	101Ch	;holds actual length of cmd in cmd buffer (lowbyte)
+                      80     80 			;101Dh	;holds actual length of cmd in cmd buffer (highbyte)
+101e                  81     81 IN_LEN		equ	101Eh	;holds length of of last cmd in input buffer (lowbyte)
+                      82     82 			;101F	;holds length of of last cmd in input buffer (highbyte)
+                      83     83 			
+1020                  84     84 CMD_PTR		equ	01020h	;start pos where cmd buffer begins, RX char become appended
+                      85     85 				;req_number converts cmd buffer to integer NUMBER (see below)
+                      86     86 				;max 32d characters allowed
+                      87     87 				;so value in NUMBER may be as large as 16x8bit=128bit
+1040                  88     88 STD_OUT		equ	01040h	;start pos where TX chars are stored and appended, max 64d char 
+                      89     89 				;allowed
+1080                  90     90 NUMBER		equ	01080h	;start pos of long number storage
+                      91     91 				;no protection agains stack corruption !
+                      92     92 				;stack defaults to 1800h upon system start
+                      93     93 
+                      94     94 ;used for backup in function "register dump":	;v93
+1100                  95     95 bak_af		equ	01100h
+1102                  96     96 bak_bc		equ	01102h
+1104                  97     97 bak_de		equ	01104h
+1106                  98     98 bak_hl		equ	01106h
+1108                  99     99 bak_ix		equ	01108h
+110a                 100    100 bak_iy		equ	0110Ah
+110c                 101    101 bak_pc		equ	0110Ch
+110e                 102    102 bak_sp		equ	0110Eh
+                     103    103 ;-------------------------------------------------------------------------------
+                     104    104 
+                     105    105 
+                     106    106 
+                     107    107 
+                     108    108 
+                     109    109 
+                     110    110 
+                     111    111 
+                     112    112 ;-------PROG START UPON SYSTEM RESET BEGIN: ------------------------------------
+                     113    113 	org	0+OFFSET
+                     114    114 WARM_START:
+0000  c3 00 01       115    115 	jp	INI_PIO
+                     116    116 	
+                     117    117 	;int vectors for cmd line mode
+                     118    118 	org	0Ch+OFFSET
+000c  fc 06          119    119 	DEFW	RX_CHA_AVAILABLE
+                     120    120 	org	0Eh+OFFSET
+Z80-Assembler		Release 1.4				Page 3
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+000e  7b 07          121    121 	DEFW	SPEC_RX_CONDITON
+                     122    122 
+                     123    123 	;int vectors for CTC
+                     124    124 	org	16h+OFFSET
+0016  e6 06          125    125 	DEFW	CT3_ZERO
+                     126    126 
+                     127    127 	;int vectors for download mode:
+                     128    128 	org	1Ch+OFFSET
+001c  32 05          129    129 	DEFW	BYTE_AVAILABLE
+                     130    130 	org	1Eh+OFFSET
+001e  7f 05          131    131 	DEFW	SPEC_BYTE_COND
+                     132    132 
+                     133    133 	org	66h+OFFSET
+                     134    134 ;	DEFW	NMI
+0066  c3 00 00       135    135 NMI:	jp	WARM_START	;handle NMI as Master Reset
+                     136    136 
+                     137    137 
+                     138    138 
+                     139    139 ;-------PIO INIT begin-----------------------------
+                     140    140 	org	0100h+OFFSET	
+                     141    141 	
+                     142    142 INI_PIO:
+                     143    143 	;init PIO A
+0100  3e 4f          144    144 	ld	a,04Fh		; set PIO A input mode
+0102  d3 0a          145    145 	out	(PIO_A_C),A
+0104  3e ff          146    146 	ld	a,0FFh		; set D7..0 of output register H
+0106  d3 08          147    147 	out	(PIO_A_D),A	; 
+                     148    148 
+                     149    149 	;init PIO B
+0108  3e cf          150    150 	ld	A,0CFh		; set PIO B to bit mode
+010a  32 05 10       151    151 	ld	(PIO_B_MODE),A	; update global PIO B mode status variable
+010d  d3 0b          152    152 	out	(PIO_B_C),A
+                     153    153 
+010f  3e ff          154    154 	ld	a,0FFh		; set D7..0 to input mode
+0111  32 06 10       155    155 	ld	(PIO_B_IO_CONF),A	;update global PIO B IO status variable
+0114  d3 0b          156    156 	out	(PIO_B_C),A	; write IO configuration into PIO B
+                     157    157 	
+0116  3e f0          158    158 	ld	A,0F0h		; SDA0, SCL0, SDA1, SCL1 = L
+                     159    159 				; if direction of SDA or SCL changes to output
+                     160    160 				; the pin will drive L
+0118  d3 09          161    161 	out	(PIO_B_D),A	;loading PIO B output register
+                     162    162 	
+011a  db 09          163    163 	in	A,(PIO_B_D)	;check status of PIO B D7
+011c  cb 7f          164    164 	bit	7,A		;when H proceed at INI_PIO_DONE
+011e  c2 2c 01       165    165 	jp	nz,INI_PIO_DONE	;when L
+                     166    166 	;re-init PIO B
+0121  3e 4f          167    167 	ld	a,04Fh		; set PIO B input mode
+0123  d3 0b          168    168 	out	(PIO_B_C),A
+0125  3e ff          169    169 	ld	a,0FFh		; set D7..0 of output register H
+0127  d3 09          170    170 	out	(PIO_B_D),A	; 
+0129  c3 00 80       171    171 	jp	8000h		; jump to user prom bottom address
+                     172    172 INI_PIO_DONE:
+                     173    173 
+                     174    174 
+                     175    175 ;ROM_TEST:
+                     176    176 ;	ld	E,06Fh	;load E with expected rom check sum
+                     177    177 ;	ld	HL,0h
+                     178    178 ;	ld	B,0h
+                     179    179 ;	sub	A	;A,B,HL cleared
+                     180    180 ;l_RT:	ld	A,B	;restore A from B
+Z80-Assembler		Release 1.4				Page 4
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                     181    181 ;	add	A,(HL)	;add A and data where HL points to
+                     182    182 ;	inc	HL	;advance HL
+                     183    183 ;	ld	B,A	;backup A in B
+                     184    184 ;	ld	A,H	;look if
+                     185    185 ;	cp	10h	;H has reached last ROM address +1 
+                     186    186 ;	jp	nz,l_RT	;loop until H has reached last ROM address +1
+                     187    187 ;	ld	A,B	;restore A from B
+                     188    188 ;	cp	E	;compare A with expected rom check sum
+                     189    189 ;	jp	z,RT_END;if match proceed at RT_END
+                     190    190 	
+                     191    191 	;init PIO A
+                     192    192 ;	ld	a,0CFh		; set PIO A to bit mode
+                     193    193 ;	out	(PIO_A_C),A
+                     194    194 ;	ld	a,0FEh		; set D0 to output mode
+                     195    195 ;	out	(PIO_A_C),A	;
+                     196    196 ;	ld	a,0h		; set D0 L
+                     197    197 ;	out	(PIO_A_D),A
+                     198    198 ;	ld	B,0
+                     199    199 ;l_RT0:	djnz	l_RT0
+                     200    200 ;	jp	WARM_START
+                     201    201 ;RT_END:
+                     202    202 
+                     203    203 ;-------------------------------------------------------------
+                     204    204 INI_SYS_VAR:
+012c  21 00 18       205    205 	ld	HL,1800h	; init stack pointer
+012f  f9             206    206 	ld	SP,HL
+0130  97             207    207 	sub	A
+                     208    208 ;	ld	(BLK_ERR),A
+0131  32 1c 10       209    209 	ld	(CMD_LEN),A	; reset CMD length counter
+0134  32 1d 10       210    210 	ld	(CMD_LEN+1),A
+0137  32 02 10       211    211 	ld	(CMD_STS),A	; clear CMD status variable
+013a  32 00 10       212    212 	ld	(RAM_DATA_STS),A ; clear RAM DATA STS
+013d  32 0b 10       213    213 	ld	(OUT_LEN),A	; clear STD_OUT length counter	
+0140  32 0c 10       214    214 	ld	(OUT_LEN+1),A
+0143  3d             215    215 	dec	A
+0144  32 0d 10       216    216 	ld	(ECHO_STS),A	; set ECHO ON
+                     217    217 
+                     218    218 ;----------------------------------------------------------------------
+                     219    219 
+                     220    220 
+                     221    221 	;RESET all I2C-Busses
+0147  cd a5 05       222    222 	call	RST_I2C0
+014a  cd b0 05       223    223 	call	RST_I2C1
+                     224    224 	
+                     225    225 
+                     226    226 ;-------CTC INIT begin----------------------------------------------------------------------
+                     227    227 INI_CTC:
+                     228    228 	;init CH 1
+014d  3e 03          229    229 	ld 	A,00000011b	; int off, timer on, prescaler=16, don't care ext. TRG edge,
+                     230    230 				; start timer on loading constant, no time constant follows
+                     231    231 				; sw-rst active, this is a ctrl cmd
+014f  d3 01          232    232 	out 	(CH1),A		; CH1 is on hold now
+                     233    233 
+                     234    234 
+                     235    235 
+                     236    236 	;init CH2
+                     237    237 	;CH2 divides CPU CLK by (256*256) providing clock signal at TO2 at JP3:#11 
+0151  3e 27          238    238 	ld 	A,00100111b	; int off, timer on, prescaler=256, no ext. start,
+                     239    239 				; start upon loading time constant, time constant follows
+                     240    240 				; sw reset, this is a ctrl cmd
+Z80-Assembler		Release 1.4				Page 5
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0153  d3 02          241    241 	out 	(CH2),A
+                     242    242 ;	ld	A,0FFh		; time constant defined
+0155  3e 60          243    243 	ld	A,060h		; time constant defined	;v93
+0157  d3 02          244    244 	out 	(CH2),A		; and loaded into channel 2
+                     245    245 				; T02 outputs 77Hz (at 5Mhz CPU CLK)
+                     246    246 
+                     247    247 
+                     248    248 	;init CH3
+                     249    249 	;CH3 is supplied by clock signal from TO2 via jumper at JP3:#11/13
+                     250    250 	;CH3 divides TO2 clock by AFh
+                     251    251 	;CH3 interupts CPU appr. every 2sec to service int routine CT3_ZERO (flashed LED D0/1)
+0159  3e c7          252    252 	ld 	A,11000111b	; int on, counter on, prescaler don't care, edge don't care,
+                     253    253 				; time trigger don't care, time constant follows
+                     254    254 				; sw reset, this is a ctrl cmd
+015b  d3 03          255    255 	out 	(CH3),A
+015d  3e af          256    256 	ld	A,0AFh		; time constant defined
+015f  d3 03          257    257 	out 	(CH3),A		; and loaded into channel 3
+                     258    258 	
+0161  3e 10          259    259 	ld	A,10h		; it vector defined in bit 7-3,bit 2-1 don't care, bit 0 = 0
+0163  d3 00          260    260 	out 	(CH0),A		; and loaded into channel 0
+                     261    261 
+                     262    262 
+                     263    263 
+                     264    264 	;init CH0
+                     265    265 	;CH0 provides SIO A RX/TX clock
+0165  3e 07          266    266 	ld 	A,00000111b	; int off, timer on, prescaler=16, don't care ext. TRG edge,
+                     267    267 				; start timer on loading constant, time constant follows
+                     268    268 				; sw-rst active, this is a ctrl cmd
+0167  d3 00          269    269 	out 	(CH0),A
+0169  3e 01          270    270 	ld	A,1h		; time constant defined
+016b  d3 00          271    271 	out 	(CH0),A		; and loaded into channel 0
+                     272    272 
+                     273    273 				; TO0 outputs app. 10Mhz/2/16/(time constant)/16
+                     274    274 				; which results in 19200 bits per sec
+                     275    275 ;-------CTC INIT done-----------------------------------------------------------------------
+                     276    276 
+                     277    277 
+                     278    278 
+                     279    279 
+                     280    280 
+                     281    281 
+                     282    282 
+                     283    283 
+                     284    284 
+                     285    285 
+                     286    286 
+                     287    287 ;-------SIO INIT begin----------------------------------------------------------------------
+                     288    288 INI_SIO:
+016d  cd 7e 07       289    289 	call	SIO_A_RESET	;cares for WR4,5,1 settings
+                     290    290 
+                     291    291 ;-------SIO INIT done-----------------------------------------------------------------------
+                     292    292 
+                     293    293 
+                     294    294 
+                     295    295 
+                     296    296 
+                     297    297 
+                     298    298 
+                     299    299 
+                     300    300 
+Z80-Assembler		Release 1.4				Page 6
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                     301    301 
+                     302    302 
+                     303    303 
+                     304    304 ;-------CPU Interrupt setup begin----------------------------------------------------------
+                     305    305 INT_INI:
+0170  01 00 00       306    306 	ld	BC,OFFSET
+0173  78             307    307 	ld	A,B
+0174  ed 47          308    308 	ld	I,A	;load I reg with highbyte of OFFSET
+0176  ed 5e          309    309 	im	2	;enable int mode 2
+                     310    310 	;di		;no int allowed yet, will be enabled later
+0178  fb             311    311 	ei		;V841
+                     312    312 ;-------CPU Interrupt setup end------------------------------------------------------------	
+                     313    313 	
+                     314    314 
+                     315    315 
+                     316    316 
+                     317    317 
+                     318    318 
+                     319    319 
+                     320    320 
+                     321    321 
+                     322    322 
+                     323    323 
+                     324    324 
+                     325    325 
+                     326    326 
+                     327    327 ;-------MENUE begin------------------------------------------------------------------------
+                     328    328 menu:
+0179  cd c9 07       329    329 	call	A_RTS_ON	; ins v95/96
+                     330    330 		
+017c  21 e4 0c       331    331 	ld	HL,Welcome	;TX welcome note
+017f  cd 0f 08       332    332 	call	TX_STR
+                     333    333 	;call	TX_STR_TERM
+                     334    334 
+0182  21 f8 0c       335    335 	ld	HL,prompt	;TX prompt
+0185  cd 0f 08       336    336 	call	TX_STR
+                     337    337 ;	call	TX_STR_TERM
+                     338    338 
+                     339    339 
+                     340    340 
+                     341    341 
+                     342    342 
+                     343    343 ;-------CMD pre processor begin-------------------------------------------
+                     344    344 CMD_pre_proc:
+                     345    345 ;	call	SIO_A_EI	;enable SIO_A interrupts
+0188  cd 6c 07       346    346 	call	poll_CMD_cpl	;loop here until CMD_STS=complete
+                     347    347 	
+                     348    348 ;-------CMD pre processor end----------------------------------------------
+                     349    349 
+                     350    350 
+                     351    351 
+                     352    352 
+                     353    353 
+                     354    354 ;-------CMD post processor begin-------------------------------------------
+                     355    355 CMD_post_proc:
+                     356    356 	;verify cmd in cmd buffer against list of available cmds:
+                     357    357 	
+                     358    358 
+                     359    359 
+018b  21 d4 0e       360    360 	ld	HL,fill
+Z80-Assembler		Release 1.4				Page 7
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+018e  cd 79 04       361    361 	call	PAR_CMD
+0191  d2 9a 01       362    362 	jp	nc,l_16
+                     363    363 
+                     364    364 
+0194  cd 8d 09       365    365 		call	fill_mem
+0197  c3 70 04       366    366 		jp	EO_post_proc
+                     367    367 
+                     368    368 
+                     369    369 
+                     370    370 l_16:
+019a  21 ce 0e       371    371 	ld	HL,copy	
+019d  cd 79 04       372    372 	call	PAR_CMD
+01a0  d2 ab 01       373    373 	jp	nc,l_15
+                     374    374 
+01a3  cd 5d 09       375    375 		call	req_snd		;request source, number, destination address
+01a6  ed b0          376    376 		ldir
+01a8  c3 70 04       377    377 		jp	EO_post_proc
+                     378    378 
+                     379    379 
+                     380    380 
+                     381    381 l_15:
+01ab  21 c8 0e       382    382 	ld	HL,cmp	
+01ae  cd 79 04       383    383 	call	PAR_CMD
+01b1  d2 bd 01       384    384 	jp	nc,l_13
+                     385    385 
+01b4  cd 5d 09       386    386 		call	req_snd		;request source, number, destination address
+01b7  cd ad 09       387    387 		call	cmp_mem		;compare mem blocks
+01ba  c3 70 04       388    388 		jp	EO_post_proc
+                     389    389 
+                     390    390 
+                     391    391 l_13:
+01bd  21 e4 0e       392    392 	ld	HL,erf	
+01c0  cd 79 04       393    393 	call	PAR_CMD
+01c3  d2 d5 01       394    394 	jp	nc,l_14
+                     395    395 
+01c6  cd 7c 0a       396    396 		call	id_check	;do id check of user flash prom
+01c9  cd 48 0a       397    397 		call	prot_off	;disable sw protection
+01cc  cd 68 0a       398    398 		call	fl_erase	;erase flash
+01cf  cd 5c 0a       399    399 		call	prot_on		;enable sw protection
+01d2  c3 70 04       400    400 		jp	EO_post_proc
+                     401    401 
+                     402    402 	
+                     403    403 
+                     404    404 l_14:	
+01d5  21 da 0e       405    405 	ld	HL,PRG_FL
+01d8  cd 79 04       406    406 	call	PAR_CMD
+01db  d2 f0 01       407    407 	jp	nc,l_102
+                     408    408 	
+01de  cd 5d 09       409    409 		call	req_snd		;request source, number, destination address
+01e1  cd 7c 0a       410    410 		call	id_check	;do id check of user flash prom
+01e4  cd 48 0a       411    411 		call	prot_off	;disable sw protection
+                     412    412 		;call	fl_erase	;erase flash
+01e7  cd f6 09       413    413 		call	fl_prog		;program flash
+01ea  cd 5c 0a       414    414 		call	prot_on		;enable sw protection
+01ed  c3 70 04       415    415 		jp	EO_post_proc
+                     416    416 
+                     417    417 
+                     418    418 l_102:
+01f0  21 8c 0e       419    419 	ld	HL,POUT
+01f3  cd 79 04       420    420 	call	PAR_CMD
+Z80-Assembler		Release 1.4				Page 8
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+01f6  d2 13 02       421    421 	jp	nc,l_01
+                     422    422 
+01f9  21 95 0d       423    423 		ld	HL,io_adr
+01fc  cd 0f 08       424    424 		call	TX_STR
+                     425    425 ;		call	TX_STR_TERM
+01ff  cd d2 07       426    426 		call	req_number	;get io address from host
+0202  4f             427    427 		ld	C,A		;save io address in c
+0203  c5             428    428 		push	BC
+0204  21 9f 0d       429    429 		ld	HL,io_dat
+0207  cd 0f 08       430    430 		call	TX_STR
+                     431    431 ;		call	TX_STR_TERM
+020a  cd d2 07       432    432 		call	req_number	;get io data from host
+020d  c1             433    433 		pop	BC		;restore io address in C
+020e  ed 79          434    434 		out	(C),A		;output io data at io address
+0210  c3 70 04       435    435 		jp	EO_post_proc
+                     436    436 
+                     437    437 
+                     438    438 l_01:
+0213  21 95 0e       439    439 	ld	HL,PIN
+0216  cd 79 04       440    440 	call	PAR_CMD
+0219  d2 39 02       441    441 	jp	nc,l_02A
+                     442    442 
+021c  21 95 0d       443    443 		ld	HL,io_adr
+021f  cd 0f 08       444    444 		call	TX_STR
+                     445    445 ;		call	TX_STR_TERM
+0222  cd d2 07       446    446 		call	req_number	;get io address from host
+0225  4f             447    447 		ld	C,A		;save io address in c
+0226  ed 78          448    448 		in	A,(C)
+0228  f5             449    449 		push	AF		;backup value input from port on stack
+0229  21 9f 0d       450    450 		ld	HL,io_dat	;announce transmission of input value
+022c  cd 0f 08       451    451 		call	TX_STR
+022f  f1             452    452 		pop	AF		;restore value input from port from stack
+0230  cd d4 08       453    453 		call	APP_ACCU	;append value to STD_OUT
+0233  cd 08 08       454    454 		call	TX_STD_OUT	;TX input value to host
+0236  c3 70 04       455    455 		jp	EO_post_proc
+                     456    456 
+                     457    457 		
+                     458    458 l_02A:		
+0239  21 16 0f       459    459 	ld	HL,pio_test
+023c  cd 79 04       460    460 	call	PAR_CMD
+023f  d2 48 02       461    461 	jp	nc,l_02
+                     462    462 
+0242  cd cb 0b       463    463 		call	p_test
+0245  c3 70 04       464    464 		jp	EO_post_proc
+                     465    465 
+                     466    466 
+                     467    467 l_02:
+0248  21 f0 0e       468    468 	ld	HL,RAM_S		;see comments at label l_0 and following
+024b  cd 79 04       469    469 	call	PAR_CMD
+024e  d2 57 02       470    470 	jp	nc,l_4
+                     471    471 
+0251  cd a8 08       472    472 		call	RAM_SIZE_CHK
+                     473    473 ;		call	TX_STR_TERM
+0254  c3 70 04       474    474 		jp	EO_post_proc
+                     475    475 
+                     476    476 
+                     477    477 
+                     478    478 
+0257  21 f9 0e       479    479 l_4:	ld	HL,DLD		;see comments at label l_0 and following
+025a  cd 79 04       480    480 	call	PAR_CMD
+Z80-Assembler		Release 1.4				Page 9
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+025d  d2 6f 02       481    481 	jp	nc,l_41
+                     482    482 
+0260  cd 75 09       483    483 		call	req_d	;ask host for destination address
+0263  21 77 0d       484    484 		ld	HL,AWT_TRM
+0266  cd 0f 08       485    485 		call	TX_STR	;request user to transmit file per xmodem
+                     486    486 ;		call	TX_STR_TERM
+0269  cd 8d 04       487    487 		call	DWNLD	;download file
+                     488    488 ;		call	TX_STR_TERM
+026c  c3 70 04       489    489 		jp	EO_post_proc
+                     490    490 
+                     491    491 
+                     492    492 
+                     493    493 
+026f  21 87 0e       494    494 l_41:	ld	HL,HELP		;see comments at label l_0 and following
+0272  cd 79 04       495    495 	call	PAR_CMD
+0275  d2 81 02       496    496 	jp	nc,l_42
+                     497    497 
+0278  21 8c 0e       498    498 		ld	HL,CMD_SET
+027b  cd 0f 08       499    499 		call	TX_STR
+                     500    500 ;		call	TX_STR_TERM
+027e  c3 70 04       501    501 		jp	EO_post_proc
+                     502    502 
+                     503    503 
+                     504    504 
+                     505    505 
+0281  21 05 0f       506    506 l_42:	ld	HL,EO
+0284  cd 79 04       507    507 	call	PAR_CMD
+0287  d2 91 02       508    508 	jp	nc,l_5
+                     509    509 	
+028a  97             510    510 		sub	A
+028b  32 0d 10       511    511 		ld	(ECHO_STS),A
+028e  c3 70 04       512    512 		jp	EO_post_proc
+                     513    513 	
+                     514    514 
+                     515    515 
+                     516    516 	
+                     517    517 
+0291  21 bf 0e       518    518 l_5:	ld	HL,VIEW_MEM	;see comments at label l_0 and following
+0294  cd 79 04       519    519 	call	PAR_CMD
+0297  d2 a9 02       520    520 	jp	nc,l_8
+                     521    521 
+029a  21 32 0d       522    522 		ld	HL,mem_adr16
+029d  cd 0f 08       523    523     		call	TX_STR
+                     524    524 ;		call	TX_STR_TERM
+02a0  cd d2 07       525    525 		call	req_number	;ask host for 16 bit number
+02a3  cd 00 09       526    526 		call	READ_MEM
+02a6  c3 70 04       527    527 		jp	EO_post_proc
+                     528    528 
+                     529    529 
+                     530    530 
+                     531    531 
+02a9  21 ff 0e       532    532 l_8:	ld	HL,ca_usr_prg		;see comments at label l_0 and following
+                     533    533 
+02ac  cd 79 04       534    534 	call	PAR_CMD
+02af  d2 c9 02       535    535 	jp	nc,l_9
+                     536    536 
+02b2  21 32 0d       537    537 		ld	HL,mem_adr16
+02b5  cd 0f 08       538    538     		call	TX_STR
+                     539    539 ;		call	TX_STR_TERM
+02b8  cd d2 07       540    540 		call	req_number	;ask host for user program start address
+Z80-Assembler		Release 1.4				Page 10
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+02bb  22 15 10       541    541 		ld	(temp0),HL	;backup start address in temp0
+02be  21 c6 02       542    542 		ld	HL,l_ret	;load user program return 
+02c1  e5             543    543 		push	HL		;address on stack
+02c2  2a 15 10       544    544 		ld	HL,(temp0)	;restore user program start address in HL
+02c5  e9             545    545 		jp	(HL)		;jump to user program
+02c6  c3 70 04       546    546 l_ret:		jp	EO_post_proc
+                     547    547 
+                     548    548 
+                     549    549 
+                     550    550 
+                     551    551 
+                     552    552 		
+02c9  21 9d 0e       553    553 l_9:	ld	HL,RSTI2C0
+02cc  cd 79 04       554    554 	call	PAR_CMD
+02cf  d2 db 02       555    555 	jp	nc,l_91
+                     556    556 
+                     557    557 		;resetting i2c0 bus:
+02d2  cd a5 05       558    558 		call	RST_I2C0	;do 10 x LHL on SCL0 while SDA0 = H
+02d5  cd 15 06       559    559 		call	SCL0_IN		;SCL0 = H
+02d8  c3 70 04       560    560 		jp	EO_post_proc
+                     561    561 	
+                     562    562 
+                     563    563 
+                     564    564 
+                     565    565 	
+                     566    566 
+02db  21 a4 0e       567    567 l_91:	ld	HL,RSTI2C1
+02de  cd 79 04       568    568 	call	PAR_CMD
+02e1  d2 ed 02       569    569 	jp	nc,l_921
+                     570    570 
+                     571    571 		;resetting i2c1 bus:
+02e4  cd b0 05       572    572 		call	RST_I2C1	;do 10 x LHL on SCL1 while SDA1 = H
+02e7  cd 25 06       573    573 		call	SCL1_IN		;SCL1 = H
+02ea  c3 70 04       574    574 		jp	EO_post_proc
+                     575    575 
+                     576    576 
+                     577    577 
+02ed  21 0e 0f       578    578 l_921:	ld	HL,i2c1_test
+02f0  cd 79 04       579    579 	call	PAR_CMD
+02f3  d2 fc 02       580    580 	jp	nc,l_10
+                     581    581 
+02f6  cd df 0a       582    582 		call	i1test
+                     583    583 
+02f9  c3 70 04       584    584 		jp	EO_post_proc
+                     585    585 
+                     586    586 
+                     587    587 
+                     588    588 
+                     589    589 
+02fc  21 b0 0e       590    590 l_10:	ld	HL,I2C0P		;access to i2c pio devices
+02ff  cd 79 04       591    591 	call	PAR_CMD
+0302  d2 48 03       592    592 	jp	nc,l_112
+                     593    593 
+0305  cd bd 06       594    594 		call	I2C0_START
+                     595    595 
+0308  21 a9 0d       596    596 		ld 	HL,p0_sel	;request select code from host
+030b  cd 0f 08       597    597 		call	TX_STR
+                     598    598 ;		call	TX_STR_TERM
+030e  cd d2 07       599    599 		call	req_number	;get select code from host
+0311  f5             600    600 		push	AF
+Z80-Assembler		Release 1.4				Page 11
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                     601    601 
+                     602    602 		;send 8bit device address to slave:
+0312  cd 85 05       603    603 		call	I2C0_tx
+0315  d2 70 04       604    604 		jp	nc,EO_post_proc
+                     605    605 
+0318  f1             606    606 		pop	AF	; check for write or read access requested by host
+0319  cb 47          607    607 		bit	0,A			
+031b  ca 33 03       608    608 		jp	z,l_651
+                     609    609 
+031e  21 cd 0d       610    610 		ld 	HL,p0_in	;anounce transmission of read value to host
+0321  cd 0f 08       611    611 		call	TX_STR
+0324  cd 8f 06       612    612 		call	I2C0_RX		; returns with slave data byte in C
+                     613    613 			
+                     614    614 		;transmit data byte to host
+                     615    615 		;ld	A,C
+0327  cd d4 08       616    616 		call	APP_ACCU	;append value to STD_OUT
+032a  cd 08 08       617    617 		call	TX_STD_OUT	;TX input value to host
+                     618    618 
+032d  cd cb 06       619    619 		call	I2C0_STOP
+0330  c3 70 04       620    620 		jp	EO_post_proc
+                     621    621 
+                     622    622 	
+                     623    623 		;write access follows:
+                     624    624 				
+                     625    625 l_651:		;write byte into slave
+0333  21 bb 0d       626    626 		ld 	HL,p0_out	;request output value from host
+0336  cd 0f 08       627    627 		call	TX_STR
+                     628    628 ;		call	TX_STR_TERM
+0339  cd d2 07       629    629 		call	req_number	;get output value from host
+033c  cd 85 05       630    630 		call	I2C0_tx
+033f  d2 70 04       631    631 		jp	nc,EO_post_proc
+                     632    632 
+0342  cd cb 06       633    633 		call	I2C0_STOP
+0345  c3 70 04       634    634 		jp	EO_post_proc
+                     635    635 		
+                     636    636 
+                     637    637 
+                     638    638 
+                     639    639 l_112:
+0348  21 ba 0e       640    640 	ld	HL,I2C1P		;access to i2c pio devices
+034b  cd 79 04       641    641 	call	PAR_CMD
+034e  d2 94 03       642    642 	jp	nc,l_11
+                     643    643 
+0351  cd c4 06       644    644 		call	I2C1_START
+                     645    645 
+0354  21 b2 0d       646    646 		ld 	HL,p1_sel	;request select code from host
+0357  cd 0f 08       647    647 		call	TX_STR
+                     648    648 ;		call	TX_STR_TERM
+035a  cd d2 07       649    649 		call	req_number	;get select code from host
+035d  f5             650    650 		push	AF
+                     651    651 
+                     652    652 		;send 8bit device address to slave:
+035e  cd 95 05       653    653 		call	I2C1_tx
+0361  d2 70 04       654    654 		jp	nc,EO_post_proc
+                     655    655 
+0364  f1             656    656 		pop	AF
+0365  cb 47          657    657 		bit	0,A	; check for write or read access requested by host
+0367  ca 7f 03       658    658 		jp	z,l_652
+                     659    659 
+036a  21 d6 0d       660    660 		ld	HL,p1_in	;anounce transmission of read value to host
+Z80-Assembler		Release 1.4				Page 12
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+036d  cd 0f 08       661    661 		call	TX_STR
+0370  cd a6 06       662    662 		call	I2C1_RX	; returns with slave data byte in C
+                     663    663 		
+                     664    664 		;transmit data byte to host
+                     665    665 		;ld	A,C
+0373  cd d4 08       666    666 		call	APP_ACCU	;append value to STD_OUT
+0376  cd 08 08       667    667 		call	TX_STD_OUT	;TX input value to host
+                     668    668 		
+0379  cd d5 06       669    669 		call	I2C1_STOP
+037c  c3 70 04       670    670 		jp	EO_post_proc
+                     671    671 
+                     672    672 	
+                     673    673 		;write access follows:
+                     674    674 				
+                     675    675 l_652:		;write byte into slave
+037f  21 c4 0d       676    676 		ld 	HL,p1_out	;request output value from host
+0382  cd 0f 08       677    677 		call	TX_STR
+                     678    678 ;		call	TX_STR_TERM
+0385  cd d2 07       679    679 		call	req_number	;get output value from host
+0388  cd 95 05       680    680 		call	I2C1_tx
+038b  d2 70 04       681    681 		jp	nc,EO_post_proc
+                     682    682 
+038e  cd d5 06       683    683 		call	I2C1_STOP
+0391  c3 70 04       684    684 		jp	EO_post_proc
+                     685    685 
+                     686    686 
+                     687    687 
+                     688    688 
+                     689    689 	
+                     690    690 	
+0394  21 ab 0e       691    691 l_11:	ld	HL,I2C0F		;access to i2c flash devices
+0397  cd 79 04       692    692 	call	PAR_CMD
+039a  d2 ff 03       693    693 	jp	nc,l_110
+                     694    694 
+039d  cd bd 06       695    695 		call	I2C0_START
+                     696    696 
+03a0  21 df 0d       697    697 		ld	HL,f0_sel	;request device select code from host
+03a3  cd 0f 08       698    698 		call	TX_STR
+                     699    699 ;		call	TX_STR_TERM
+03a6  cd d2 07       700    700 		call	req_number	;get device select code from host
+03a9  f5             701    701 		push	AF
+                     702    702 
+03aa  cb 87          703    703 		res	0,A		; clear LSB to indicate write access to slave
+03ac  cd 85 05       704    704 		call	I2C0_tx
+03af  d2 70 04       705    705 		jp	nc,EO_post_proc
+                     706    706 
+03b2  21 f1 0d       707    707 		ld	HL,f0_adr	;request memory address from host
+03b5  cd 0f 08       708    708 		call	TX_STR
+                     709    709 ;		call	TX_STR_TERM
+03b8  cd d2 07       710    710 		call	req_number	;get memory address from host
+03bb  cd 85 05       711    711 		call	I2C0_tx
+03be  d2 70 04       712    712 		jp	nc,EO_post_proc
+                     713    713 	
+03c1  f1             714    714 		pop	AF		; check for write or read access requested by host
+03c2  f5             715    715 		push	AF
+03c3  cb 47          716    716 		bit	0,A			
+03c5  ca ea 03       717    717 		jp	z,l_65
+                     718    718 				
+                     719    719 		;read access follows:
+                     720    720 
+Z80-Assembler		Release 1.4				Page 13
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                     721    721 		;restart I2C bus 0
+03c8  cd 15 06       722    722 		call	SCL0_IN		;SCL0 = H
+03cb  cd bd 06       723    723 		call	I2C0_START
+                     724    724 
+                     725    725 		;resend 8bit device select code
+03ce  f1             726    726 		pop	AF		
+03cf  cd 85 05       727    727 		call	I2C0_tx
+03d2  d2 70 04       728    728 		jp	nc,EO_post_proc
+                     729    729 
+03d5  21 15 0e       730    730 		ld	HL,f0_dar	; anounce transmission of read byte to host
+03d8  cd 0f 08       731    731 		call	TX_STR	
+03db  cd 8f 06       732    732 		call	I2C0_RX	; returns with slave data byte in C
+                     733    733 
+                     734    734 		;forward data byte to host
+                     735    735 		;ld	A,C
+03de  cd d4 08       736    736 		call	APP_ACCU	;append value to STD_OUT
+03e1  cd 08 08       737    737 		call	TX_STD_OUT	;TX input value to host
+03e4  cd cb 06       738    738 		call	I2C0_STOP
+03e7  c3 70 04       739    739 		jp	EO_post_proc
+                     740    740 				
+                     741    741 l_65:		;write byte into slave
+03ea  21 03 0e       742    742 		ld	HL,f0_daw	;request byte to be written from host
+03ed  cd 0f 08       743    743 		call	TX_STR
+                     744    744 ;		call	TX_STR_TERM
+03f0  cd d2 07       745    745 		call	req_number	;get byte to be written from host
+                     746    746 		
+03f3  cd 85 05       747    747 		call	I2C0_tx
+03f6  d2 70 04       748    748 		jp	nc,EO_post_proc
+                     749    749 
+03f9  cd cb 06       750    750 		call	I2C0_STOP
+03fc  c3 70 04       751    751 		jp	EO_post_proc
+                     752    752 
+                     753    753 
+                     754    754 
+                     755    755 
+03ff  21 b5 0e       756    756 l_110:	ld	HL,I2C1F		;access to i2c flash devices
+0402  cd 79 04       757    757 	call	PAR_CMD
+0405  d2 6a 04       758    758 	jp	nc,l_100
+                     759    759 
+0408  cd c4 06       760    760 		call	I2C1_START
+                     761    761 
+040b  21 e8 0d       762    762 		ld	HL,f1_sel	;request device select code from host
+040e  cd 0f 08       763    763 		call	TX_STR
+                     764    764 ;		call	TX_STR_TERM
+0411  cd d2 07       765    765 		call	req_number	;get device select code from host
+0414  f5             766    766 		push	AF
+                     767    767 
+                     768    768 		;send 8bit device select code to slave:
+0415  cb 87          769    769 		res	0,A		; clear LSB to indicate write access to slave
+0417  cd 95 05       770    770 		call	I2C1_tx
+041a  d2 70 04       771    771 		jp	nc,EO_post_proc
+                     772    772 
+041d  21 fa 0d       773    773 		ld	HL,f1_adr	;request memory address from host
+0420  cd 0f 08       774    774 		call	TX_STR
+                     775    775 ;		call	TX_STR_TERM
+0423  cd d2 07       776    776 		call 	req_number	;get memory address from host
+0426  cd 95 05       777    777 		call	I2C1_tx
+0429  d2 70 04       778    778 		jp	nc,EO_post_proc
+                     779    779 
+042c  f1             780    780 		pop	AF		; check for write or read access requested by host
+Z80-Assembler		Release 1.4				Page 14
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+042d  f5             781    781 		push	AF
+042e  cb 47          782    782 		bit	0,A			
+0430  ca 55 04       783    783 		jp	z,l_653
+                     784    784 				
+                     785    785 		;read access follows:
+                     786    786 
+                     787    787 		;restart I2C bus 1
+0433  cd 25 06       788    788 		call	SCL1_IN		;SCL1 = H
+0436  cd c4 06       789    789 		call	I2C1_START
+                     790    790 
+                     791    791 		;resend 8bit device select code
+0439  f1             792    792 		pop	AF
+043a  cd 95 05       793    793 		call	I2C1_tx
+043d  d2 70 04       794    794 		jp	nc,EO_post_proc
+                     795    795 
+0440  21 1e 0e       796    796 		ld	HL,f1_dar	;anounce transmission of data read to host
+0443  cd 0f 08       797    797 		call	TX_STR
+0446  cd a6 06       798    798 		call	I2C1_RX	; returns with slave data byte in C
+                     799    799 
+                     800    800 		;forward data byte to host
+                     801    801 		;ld	A,C
+0449  cd d4 08       802    802 		call	APP_ACCU	;append value to STD_OUT
+044c  cd 08 08       803    803 		call	TX_STD_OUT	;TX input value to host
+044f  cd d5 06       804    804 		call	I2C1_STOP
+0452  c3 70 04       805    805 		jp	EO_post_proc
+                     806    806 
+                     807    807 				
+                     808    808 l_653:		;write byte into slave
+0455  21 0c 0e       809    809 		ld	HL,f1_daw	;request byte to be written from host
+0458  cd 0f 08       810    810 		call	TX_STR
+                     811    811 ;		call	TX_STR_TERM
+045b  cd d2 07       812    812 		call	req_number	;get byte to be written from host
+                     813    813 		
+045e  cd 95 05       814    814 		call	I2C1_tx
+0461  d2 70 04       815    815 		jp	nc,EO_post_proc
+                     816    816 
+0464  cd d5 06       817    817 		call	I2C1_STOP
+0467  c3 70 04       818    818 		jp	EO_post_proc
+                     819    819 
+                     820    820 
+                     821    821 
+                     822    822 
+                     823    823 
+                     824    824 	;--------------------------------------------------------------
+                     825    825 l_100:	;process any other command this way:
+                     826    826 ;	call	wait_2
+046a  21 2d 0d       827    827 	ld	HL,error	;TX "unkown cmd" 
+046d  cd 0f 08       828    828 	call	TX_STR
+                     829    829 ;	call	TX_STR_TERM
+                     830    830 	
+                     831    831 EO_post_proc:
+                     832    832 ;	call	wait_2
+0470  21 f8 0c       833    833 	ld	HL,prompt		;TX "prompt"
+0473  cd 0f 08       834    834 	call	TX_STR
+                     835    835 ;	call	TX_STR_TERM
+0476  c3 88 01       836    836 	jp	CMD_pre_proc	;go checking CMD_STS
+                     837    837 
+                     838    838 	
+                     839    839 	;-------CMD parsing begin--------------------------------------------------
+                     840    840 	;requires HL pointing to CMD to be parsed
+Z80-Assembler		Release 1.4				Page 15
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                     841    841 PAR_CMD:
+0479  11 20 10       842    842 	ld	DE,CMD_PTR
+                     843    843 l_51:
+047c  1a             844    844 	ld	A,(DE)
+047d  ed a1          845    845 	CPI
+047f  c2 8a 04       846    846 	jp	nz,l_52 ;if mismatch of first char in cmd buffer, do next parsing
+0482  13             847    847 	inc	DE	;prepare next char in cmd buffer		
+0483  fe 0d          848    848 	cp	0Dh	;check for end of cmd (CR)	
+0485  c2 7c 04       849    849 	jp	nz,l_51		;if end of cmd reached
+                     850    850 				;and start cmd execution:
+                     851    851 				
+                     852    852 				;sending of NEW_LINE here removed with V80
+                     853    853 				
+0488  37             854    854 	scf		;if match return with carry set
+0489  c9             855    855 	RET
+                     856    856 
+048a  37             857    857 l_52:	scf
+048b  3f             858    858 	ccf		;if mismatch return with carry cleared
+048c  c9             859    859 	RET
+                     860    860 	;-------CMD parsing end--------------------------------------------------
+                     861    861 
+                     862    862 ;-------CMD post processor end-------------------------------------------------------------------------
+                     863    863 
+                     864    864 
+                     865    865 
+                     866    866 
+                     867    867 
+                     868    868 
+                     869    869 
+                     870    870 
+                     871    871 
+                     872    872 
+                     873    873 ;-------DOWNLOAD begin--------------------------------------------------------------------
+048d  0e 0b          874    874 DWNLD:	ld	C,0Bh		;defines timeout	
+                     875    875 
+048f  cd 3b 08       876    876 TICKER:	call   	WAIT_2
+0492  0d             877    877 	dec	C
+0493  79             878    878 	ld	A,C
+0494  fe 00          879    879 	cp	0
+0496  c2 8f 04       880    880 	jp	nz,TICKER
+                     881    881 
+                     882    882 ;-------------
+                     883    883 	;set up TX and RX:
+                     884    884 ;	ld	a,00110000b	;write into WR0: error reset, select WR0
+                     885    885 ;	out	(SIO_A_C),A
+                     886    886 
+0499  3e 18          887    887 	ld	a,018h		;write into WR0: channel reset
+049b  d3 06          888    888 	out	(SIO_A_C),A
+                     889    889 
+049d  3e 04          890    890 	ld	a,004h		;write into WR0: select WR4
+049f  d3 06          891    891 	out	(SIO_A_C),A
+04a1  3e 44          892    892 	ld	a,44h		;44h write into WR4: clkx16,1 stop bit, no parity
+04a3  d3 06          893    893 	out	(SIO_A_C),A
+                     894    894 
+04a5  3e 05          895    895 	ld	a,005h		;write into WR0: select WR5
+04a7  d3 06          896    896 	out	(SIO_A_C),A
+04a9  3e e8          897    897 	ld	a,0E8h		;DTR active, TX 8bit, BREAK off, TX on, RTS inactive
+04ab  d3 06          898    898 	out	(SIO_A_C),A
+                     899    899 
+04ad  3e 01          900    900 	ld	a,01h		;write into WR0: select WR1
+Z80-Assembler		Release 1.4				Page 16
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+04af  d3 07          901    901 	out	(SIO_B_C),A
+04b1  3e 04          902    902 	ld	a,00000100b	;no interrupt in CH B, special RX condition affects vect	
+04b3  d3 07          903    903 	out	(SIO_B_C),A
+                     904    904 
+04b5  3e 02          905    905 	ld	a,02h		;write into WR0: select WR2
+04b7  d3 07          906    906 	out	(SIO_B_C),A
+04b9  3e 10          907    907 	ld	a,10h		;write into WR2: cmd line int vect (see int vec table)
+04bb  d3 07          908    908 	out	(SIO_B_C),A	;bits D3,D2,D1 are changed according to RX condition
+                     909    909 
+04bd  97             910    910 	sub	A
+04be  32 15 10       911    911 	ld	(temp0),A	;reset bad blocks counter
+04c1  32 00 10       912    912 	ld	(RAM_DATA_STS),A ;clear RAM DATA STS
+04c4  0e 01          913    913 	ld	C,1h		;C holds first block nr to expect
+04c6  2a 11 10       914    914 	ld	HL,(DEST_ADR)	;set lower destinatiion address of user program
+                     915    915 
+04c9  cd ae 07       916    916 	call	SIO_A_EI
+04cc  cd c9 07       917    917 	call	A_RTS_ON
+                     918    918 
+04cf  cd 6f 05       919    919 	call	TX_NAK		;NAK indicates ready for transmission to host
+                     920    920 
+                     921    921 ;----------------------------
+                     922    922 REC_BLOCK:
+                     923    923 	;set block transfer mode
+04d2  3e 21          924    924 	ld	a,21h		;write into WR0 cmd4 and select WR1
+04d4  d3 06          925    925 	out	(SIO_A_C),A
+04d6  3e a8          926    926 	ld	a,10101000b	;wait active, interrupt on first RX character
+04d8  d3 06          927    927 	out	(SIO_A_C),A	;buffer overrun is a spec RX condition
+                     928    928 
+04da  fb             929    929 	ei
+                     930    930 	;call	A_RTS_ON	; rm V95/96
+04db  76             931    931 	halt			;await first rx char
+                     932    932 	;call	A_RTS_OFF	; rm V95/96   
+                     933    933 
+04dc  3e 01          934    934 	ld	a,01h		;write into WR0: select WR1
+04de  d3 06          935    935 	out	(SIO_A_C),A
+04e0  3e 28          936    936 	ld	a,00101000b	;wait function inactive
+04e2  d3 06          937    937 	out	(SIO_A_C),A
+                     938    938 
+                     939    939 	;check return code of block reception (e holds return code)
+04e4  7b             940    940 	ld	a,e		
+04e5  fe 00          941    941 	cp	0		;block finished, no error
+04e7  ca fc 04       942    942 	jp	z,l_210
+04ea  fe 02          943    943 	cp	2		;eot found
+04ec  ca 07 05       944    944 	jp	z,l_211
+04ef  fe 03          945    945 	cp	3		;chk sum error
+04f1  ca 12 05       946    946 	jp	z,l_613
+                     947    947 
+                     948    948 ;	call	TX_NAK		;other error ?
+                     949    949 ;	sub	a
+04f4  3e 10          950    950 	ld	a,10h
+04f6  32 00 10       951    951 	ld	(RAM_DATA_STS),A; set RAM DATA STS to 10h
+04f9  c3 2b 05       952    952 	jp	l_612
+                     953    953 
+04fc  cd 77 05       954    954 l_210:	call	TX_ACK		;when no error
+04ff  0c             955    955 	inc	c		;prepare next block to receive
+0500  97             956    956 	sub	A
+0501  32 15 10       957    957 	ld	(temp0),A	;clear bad block counter
+0504  c3 d2 04       958    958 	jp	REC_BLOCK	
+                     959    959 
+0507  cd 77 05       960    960 l_211:	call	TX_ACK		;on eot
+Z80-Assembler		Release 1.4				Page 17
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+050a  3e 01          961    961 	ld	A,01h
+050c  32 00 10       962    962 	ld	(RAM_DATA_STS),A; set RAM DATA STS to 01h
+050f  c3 2b 05       963    963 	jp	l_612	
+                     964    964 
+0512  cd 6f 05       965    965 l_613:	call	TX_NAK		;on chk sum error
+0515  37             966    966 	scf
+0516  3f             967    967 	ccf			;clear carry flag
+0517  11 80 00       968    968 	ld	DE,0080h	;subtract 80h
+051a  ed 52          969    969 	sbc	HL,DE		;from HL, so HL is reset to block start address
+                     970    970 
+051c  3a 15 10       971    971 	ld	A,(temp0)	;count bad blocks in temp0
+051f  3c             972    972 	inc	A
+0520  32 15 10       973    973 	ld	(temp0),A	
+0523  fe 09          974    974 	cp	09h
+0525  ca 2b 05       975    975 	jp	z,l_612		;abort download after 9 attempts to transfer a block
+0528  c3 d2 04       976    976 	jp	REC_BLOCK	;repeat block reception
+                     977    977 
+                     978    978 l_612:
+                     979    979 DLD_END:
+052b  cd 7e 07       980    980 	call	SIO_A_RESET
+052e  cd c9 07       981    981 	call	A_RTS_ON	; in V95/96	
+0531  c9             982    982 	ret
+                     983    983 
+                     984    984 	
+                     985    985 
+                     986    986 ;-------Int routine upon byte available begin---------------------
+                     987    987 
+                     988    988 BYTE_AVAILABLE:
+                     989    989 
+                     990    990 EXP_SOH_EOT:
+0532  db 04          991    991 	in	A,(SIO_A_D)	;read RX byte into A
+0534  fe 01          992    992 l_205:	cp	01h		;check for SOH
+0536  ca 42 05       993    993 	jp	z,EXP_BLK_NR
+0539  fe 04          994    994 	cp	04h		;check for EOT
+053b  c2 67 05       995    995 	jp	nz,l_2020
+053e  1e 02          996    996 	ld	e,2h
+0540  ed 4d          997    997 	reti
+                     998    998 
+                     999    999 	;await block number
+                    1000   1000 EXP_BLK_NR:
+0542  db 04         1001   1001 	in	A,(SIO_A_D)	;read RX byte into A
+0544  b9            1002   1002 	cp	C		;check for match of block nr
+0545  c2 67 05      1003   1003 	jp	nz,l_2020
+                    1004   1004 
+                    1005   1005 	;await complement of block number
+0548  79            1006   1006 	ld	A,C		;copy block nr to expect into A
+0549  2f            1007   1007 	CPL			;and cpl A
+054a  5f            1008   1008 	ld	E,A		;E holds cpl of block nr to expect
+                    1009   1009 EXP_CPL_BLK_NR:
+054b  db 04         1010   1010 	in	A,(SIO_A_D)	;read RX byte into A
+054d  bb            1011   1011 	cp	E		;check for cpl of block nr
+054e  c2 67 05      1012   1012 	jp	nz,l_2020
+                    1013   1013 
+                    1014   1014 	;await data block
+0551  16 00         1015   1015 	ld	D,0h		;start value of checksum
+0553  06 80         1016   1016 	ld	B,80h		;defines block size 128byte		
+                    1017   1017 EXP_DATA:
+0555  db 04         1018   1018 	in	A,(SIO_A_D)	;read RX byte into A
+0557  77            1019   1019 	ld	(HL),A
+0558  82            1020   1020 	add	A,D		;update
+Z80-Assembler		Release 1.4				Page 18
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0559  57            1021   1021 	ld	D,A		;checksum in D
+055a  23            1022   1022 	inc	HL		;dest address +1
+055b  10 f8         1023   1023 	djnz	EXP_DATA	;loop until block finished
+                    1024   1024 		    
+                    1025   1025 EXP_CHK_SUM:
+055d  db 04         1026   1026 	in	A,(SIO_A_D)	;read RX byte into A
+                    1027   1027 ;	ld	a,045h		;for debug only
+055f  ba            1028   1028 	cp	D		;check for checksum match
+0560  ca 6b 05      1029   1029 	jp	z,l_2021
+0563  1e 03         1030   1030 	ld	e,3h
+0565  ed 4d         1031   1031 	reti
+                    1032   1032 
+0567  1e 01         1033   1033 l_2020:	ld	E,1h
+0569  ed 4d         1034   1034 	RETI
+056b  1e 00         1035   1035 l_2021:	ld	E,0h
+056d  ed 4d         1036   1036 	RETI		;return when block received completely
+                    1037   1037 
+                    1038   1038 
+                    1039   1039 ;---------------------------
+                    1040   1040 TX_NAK:	
+056f  3e 15         1041   1041 	ld	a,15h	;send NAK 15h to host
+0571  d3 04         1042   1042 	out	(SIO_A_D),A
+0573  cd 22 08      1043   1043 	call	TX_EMP
+0576  c9            1044   1044 	RET
+                    1045   1045 
+                    1046   1046 TX_ACK:
+0577  3e 06         1047   1047 	ld	a,6h	;send AK to host
+0579  d3 04         1048   1048 	out	(SIO_A_D),A
+057b  cd 22 08      1049   1049 	call	TX_EMP
+057e  c9            1050   1050 	RET
+                    1051   1051 
+                    1052   1052 
+                    1053   1053 
+                    1054   1054 ;-------Int routine upon RX overflow begin---------------------
+                    1055   1055 SPEC_BYTE_COND:			;in case of RX overflow
+057f  21 2b 05      1056   1056 	ld	HL,DLD_END
+0582  e5            1057   1057 	push	HL
+0583  ed 4d         1058   1058 	reti
+                    1059   1059 
+                    1060   1060 
+                    1061   1061 ;-------DOWNLOAD end----------------------------------------------------------
+                    1062   1062 
+                    1063   1063 
+                    1064   1064 
+                    1065   1065 
+                    1066   1066 
+                    1067   1067 
+                    1068   1068 
+                    1069   1069 
+                    1070   1070 ;-------I2C SUBROUTINES BEGIN---------------------------------------------
+                    1071   1071 ;transmits byte to I2C device on bus 0
+                    1072   1072 ;returns with carry cleared if ackn bit not found
+                    1073   1073 ;modifies A,B,C,D,HL
+0585  cd 55 06      1074   1074 I2C0_tx:	call	send0_byte
+0588  cb 4a         1075   1075 		bit	1,D		; test D register for acknowledge bit
+058a  37            1076   1076 		scf
+058b  c8            1077   1077 		ret	z		;return if akn bit = L with carry set
+                    1078   1078 		;when ACK error on bus - transmit error message to host and stop bus
+058c  cd df 06      1079   1079 		call	TX_error
+058f  cd cb 06      1080   1080 		call	I2C0_STOP
+Z80-Assembler		Release 1.4				Page 19
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0592  37            1081   1081 		scf
+0593  3f            1082   1082 		ccf
+0594  c9            1083   1083 		ret			;return if akn bit = H with carry cleared
+                    1084   1084 
+0595  cd 72 06      1085   1085 I2C1_tx:	call	send1_byte
+0598  cb 5a         1086   1086 		bit	3,D		; test D register for acknowledge bit
+059a  37            1087   1087 		scf
+059b  c8            1088   1088 		ret	z		;return if akn bit = L with carry set
+                    1089   1089 		;when ACK error on bus - transmit error message to host and stop bus
+059c  cd df 06      1090   1090 		call	TX_error
+059f  cd d5 06      1091   1091 		call	I2C1_STOP
+05a2  37            1092   1092 		scf
+05a3  3f            1093   1093 		ccf
+05a4  c9            1094   1094 		ret			;return if akn bit = H with carry cleared
+                    1095   1095 
+                    1096   1096 
+                    1097   1097 	
+                    1098   1098 RST_I2C0:	;modifies A, B, D
+                    1099   1099 		;SDA0 must be H for proper reset
+                    1100   1100 		;leaves SDA0 = H and SCL0 = H
+05a5  06 0a         1101   1101 		ld	B,0Ah	    ; do 10 SCL0 cycles while SDA0 is H
+05a7  cd bb 05      1102   1102 l_77:		call	SCL0_CYCLE
+05aa  10 fb         1103   1103 		djnz	l_77
+05ac  cd 15 06      1104   1104 		call	SCL0_IN
+05af  c9            1105   1105 		ret
+                    1106   1106 
+                    1107   1107 RST_I2C1:	;modifies A, B, D
+                    1108   1108 		;SDA1 must be H for proper reset
+                    1109   1109 		;leaves SDA1 = H and SCL1 = H
+05b0  06 0a         1110   1110 		ld	B,0Ah	    ; do 10 SCL1 cycles while SDA0 is H
+05b2  cd c8 05      1111   1111 l_771:		call	SCL1_CYCLE
+05b5  10 fb         1112   1112 		djnz	l_771
+05b7  cd 25 06      1113   1113 		call	SCL1_IN
+05ba  c9            1114   1114 		ret
+                    1115   1115 
+                    1116   1116 SCL0_CYCLE:	;modifies A
+                    1117   1117 		;returns D wherin bit 1 represents status of SDA0 while
+                    1118   1118 		;SCL0 was H
+                    1119   1119 		;leaves SCL0 = L
+05bb  cd 35 06      1120   1120 		call	SCL0_OUT
+05be  cd 15 06      1121   1121 		call	SCL0_IN
+                    1122   1122 		
+                    1123   1123 		;look for ackn bit
+05c1  db 09         1124   1124 		in	A,(PIO_B_D)
+05c3  57            1125   1125 		ld	D,A
+05c4  cd 35 06      1126   1126 		call	SCL0_OUT
+05c7  c9            1127   1127 		ret
+                    1128   1128 
+                    1129   1129 SCL1_CYCLE:	;modifies A
+                    1130   1130 		;returns D wherin bit 3 represents status of SDA1 while
+                    1131   1131 		;SCL1 was H
+                    1132   1132 		;leaves SCL1 = L
+05c8  cd 45 06      1133   1133 		call	SCL1_OUT
+05cb  cd 25 06      1134   1134 		call	SCL1_IN
+                    1135   1135 		
+                    1136   1136 		;look for ackn bit
+05ce  db 09         1137   1137 		in	A,(PIO_B_D)
+05d0  57            1138   1138 		ld	D,A
+05d1  cd 45 06      1139   1139 		call	SCL1_OUT
+05d4  c9            1140   1140 		ret
+Z80-Assembler		Release 1.4				Page 20
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    1141   1141 
+                    1142   1142 SDA0_IN:	;modifies A	    
+                    1143   1143 		;reload PIO B mode
+05d5  3a 05 10      1144   1144 		ld	A,(PIO_B_MODE)
+05d8  d3 0b         1145   1145 		out	(PIO_B_C),A
+                    1146   1146 		;change direction of SDA0 to input
+05da  3a 06 10      1147   1147 		ld	A,(PIO_B_IO_CONF)
+05dd  cb cf         1148   1148 		set	1,A
+05df  d3 0b         1149   1149 		out	(PIO_B_C),A
+05e1  32 06 10      1150   1150 		ld	(PIO_B_IO_CONF),A
+05e4  c9            1151   1151 		ret
+                    1152   1152 
+                    1153   1153 SDA1_IN:	;modifies A	    
+                    1154   1154 		;reload PIO B mode
+05e5  3a 05 10      1155   1155 		ld	A,(PIO_B_MODE)
+05e8  d3 0b         1156   1156 		out	(PIO_B_C),A
+                    1157   1157 		;change direction of SDA1 to input
+05ea  3a 06 10      1158   1158 		ld	A,(PIO_B_IO_CONF)
+05ed  cb df         1159   1159 		set	3,A
+05ef  d3 0b         1160   1160 		out	(PIO_B_C),A
+05f1  32 06 10      1161   1161 		ld	(PIO_B_IO_CONF),A
+05f4  c9            1162   1162 		ret
+                    1163   1163 	
+                    1164   1164 SDA0_OUT:	;modifies A
+                    1165   1165 		;reload PIO B mode
+05f5  3a 05 10      1166   1166 		ld	A,(PIO_B_MODE)
+05f8  d3 0b         1167   1167 		out	(PIO_B_C),A
+                    1168   1168 		;change direction of SDA0 to output
+05fa  3a 06 10      1169   1169 		ld	A,(PIO_B_IO_CONF)
+05fd  cb 8f         1170   1170 		res	1,A
+05ff  d3 0b         1171   1171 		out	(PIO_B_C),A
+0601  32 06 10      1172   1172 		ld	(PIO_B_IO_CONF),A
+0604  c9            1173   1173 		ret
+                    1174   1174 
+                    1175   1175 SDA1_OUT:	;modifies A
+                    1176   1176 		;reload PIO B mode
+0605  3a 05 10      1177   1177 		ld	A,(PIO_B_MODE)
+0608  d3 0b         1178   1178 		out	(PIO_B_C),A
+                    1179   1179 		;change direction of SDA1 to output
+060a  3a 06 10      1180   1180 		ld	A,(PIO_B_IO_CONF)
+060d  cb 9f         1181   1181 		res	3,A
+060f  d3 0b         1182   1182 		out	(PIO_B_C),A
+0611  32 06 10      1183   1183 		ld	(PIO_B_IO_CONF),A
+0614  c9            1184   1184 		ret
+                    1185   1185 
+                    1186   1186 SCL0_IN:	;modifies A
+                    1187   1187 		;reload PIO B mode
+0615  3a 05 10      1188   1188 		ld	A,(PIO_B_MODE)
+0618  d3 0b         1189   1189 		out	(PIO_B_C),A
+                    1190   1190 		;change direction of SCL0 to input
+061a  3a 06 10      1191   1191 		ld	A,(PIO_B_IO_CONF)
+061d  cb c7         1192   1192 		set	0,A
+061f  d3 0b         1193   1193 		out	(PIO_B_C),A
+0621  32 06 10      1194   1194 		ld	(PIO_B_IO_CONF),A
+0624  c9            1195   1195 		ret
+                    1196   1196 
+                    1197   1197 SCL1_IN:	;modifies A
+                    1198   1198 		;reload PIO B mode
+0625  3a 05 10      1199   1199 		ld	A,(PIO_B_MODE)
+0628  d3 0b         1200   1200 		out	(PIO_B_C),A
+Z80-Assembler		Release 1.4				Page 21
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    1201   1201 		;change direction of SCL1 to input
+062a  3a 06 10      1202   1202 		ld	A,(PIO_B_IO_CONF)
+062d  cb d7         1203   1203 		set	2,A
+062f  d3 0b         1204   1204 		out	(PIO_B_C),A
+0631  32 06 10      1205   1205 		ld	(PIO_B_IO_CONF),A
+0634  c9            1206   1206 		ret
+                    1207   1207 
+                    1208   1208 SCL0_OUT:	;modifies A
+                    1209   1209 		;reload PIO B mode
+0635  3a 05 10      1210   1210 		ld	A,(PIO_B_MODE)
+0638  d3 0b         1211   1211 		out	(PIO_B_C),A
+                    1212   1212 		;change direction of SCL0 to output
+063a  3a 06 10      1213   1213 		ld	A,(PIO_B_IO_CONF)
+063d  cb 87         1214   1214 		res	0,A
+063f  d3 0b         1215   1215 		out	(PIO_B_C),A
+0641  32 06 10      1216   1216 		ld	(PIO_B_IO_CONF),A
+0644  c9            1217   1217 		ret
+                    1218   1218 
+                    1219   1219 SCL1_OUT:	;modifies A
+                    1220   1220 		;reload PIO B mode
+0645  3a 05 10      1221   1221 		ld	A,(PIO_B_MODE)
+0648  d3 0b         1222   1222 		out	(PIO_B_C),A
+                    1223   1223 		;change direction of SCL1 to output
+064a  3a 06 10      1224   1224 		ld	A,(PIO_B_IO_CONF)
+064d  cb 97         1225   1225 		res	2,A
+064f  d3 0b         1226   1226 		out	(PIO_B_C),A
+0651  32 06 10      1227   1227 		ld	(PIO_B_IO_CONF),A
+0654  c9            1228   1228 		ret
+                    1229   1229 
+                    1230   1230 send0_byte:	;requires value to be sent in A
+                    1231   1231 		;returns with bit 1 of D holding status of ACKN bit
+                    1232   1232 		;and SCL0 = L and SDA0 = H
+                    1233   1233 		;modifies A, B, C, D
+0655  06 08         1234   1234 		ld	B,8h		; 8 bits are to be clocked out
+0657  4f            1235   1235 		ld	C,A		; copy to C reg
+0658  cb 21         1236   1236 l_74:		sla	C		; shift MSB of C into carry
+065a  da 63 06      1237   1237 		jp	c,SDA0_H	; when L
+065d  cd f5 05      1238   1238 SDA0_L:		call	SDA0_OUT	; pull SDA0 low
+0660  c3 66 06      1239   1239 		jp	l_75
+0663  cd d5 05      1240   1240 SDA0_H:		call	SDA0_IN		; release SDA0 to let it go high
+0666  cd bb 05      1241   1241 l_75:		call	SCL0_CYCLE	; do SCL0 cycle (LHL)
+0669  10 ed         1242   1242 		djnz	l_74		; process next bit of C reg
+066b  cd d5 05      1243   1243 		call	SDA0_IN		; release SDA0 to let it go high
+066e  cd bb 05      1244   1244 		call	SCL0_CYCLE	; do SCL0 cycle (LHL), bit 1 of D holds ackn bit
+0671  c9            1245   1245 		ret
+                    1246   1246 
+                    1247   1247 send1_byte:	;requires value to be sent in A
+                    1248   1248 		;returns with bit 3 of D holding status of ACKN bit
+                    1249   1249 		;and SCL1 = L and SDA1 = H
+                    1250   1250 		;modifies A, B, C, D
+0672  06 08         1251   1251 		ld	B,8h		; 8 bits are to be clocked out
+0674  4f            1252   1252 		ld	C,A		; copy to C reg
+0675  cb 21         1253   1253 l_741:		sla	C		; shift MSB of C into carry
+0677  da 80 06      1254   1254 		jp	c,SDA1_H	; when L
+067a  cd 05 06      1255   1255 SDA1_L:		call	SDA1_OUT	; pull SDA1 low
+067d  c3 83 06      1256   1256 		jp	l_751
+0680  cd e5 05      1257   1257 SDA1_H:		call	SDA1_IN		; release SDA1 to let it go high
+0683  cd c8 05      1258   1258 l_751:		call	SCL1_CYCLE	; do SCL1 cycle (LHL)
+0686  10 ed         1259   1259 		djnz	l_741		; process next bit of C reg
+0688  cd e5 05      1260   1260 		call	SDA1_IN		; release SDA1 to let it go high
+Z80-Assembler		Release 1.4				Page 22
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+068b  cd c8 05      1261   1261 		call	SCL1_CYCLE	; do SCL1 cycle (LHL), bit 3 of D holds ackn bit
+068e  c9            1262   1262 		ret
+                    1263   1263 
+                    1264   1264 I2C0_RX:	;modifies A, B, D
+                    1265   1265 		;returns with slave data byte in C
+                    1266   1266 		;leaves SCL0 = L and SDA0 = H
+068f  06 08         1267   1267 		ld	B,8h
+0691  db 09         1268   1268 l_66:		in	A,(PIO_B_D)
+0693  37            1269   1269 		scf
+0694  cb 4f         1270   1270 		bit	1,A
+0696  c2 9a 06      1271   1271 		jp	nz,H0_found	
+0699  3f            1272   1272 L0_found:	ccf
+069a  cb 11         1273   1273 H0_found:	rl	C
+069c  cd bb 05      1274   1274 		call	SCL0_CYCLE
+069f  10 f0         1275   1275 		djnz	l_66
+06a1  cd bb 05      1276   1276 		call	SCL0_CYCLE	;send NAK to slave
+                    1277   1277 		;byte ready in C
+06a4  79            1278   1278 		ld	A,C
+06a5  c9            1279   1279 		ret
+                    1280   1280 
+                    1281   1281 
+                    1282   1282 I2C1_RX:	;modifies A, B, D
+                    1283   1283 		;returns with slave data byte in C
+                    1284   1284 		;leaves SCL1 = L and SDA1 = H
+06a6  06 08         1285   1285 		ld	B,8h
+06a8  db 09         1286   1286 l_661:		in	A,(PIO_B_D)
+06aa  37            1287   1287 		scf
+06ab  cb 5f         1288   1288 		bit	3,A
+06ad  c2 b1 06      1289   1289 		jp	nz,H1_found	
+06b0  3f            1290   1290 L1_found:	ccf
+06b1  cb 11         1291   1291 H1_found:	rl	C
+06b3  cd c8 05      1292   1292 		call	SCL1_CYCLE
+06b6  10 f0         1293   1293 		djnz	l_661
+06b8  cd c8 05      1294   1294 		call	SCL1_CYCLE	;send NAK to slave
+                    1295   1295 		;byte ready in C
+06bb  79            1296   1296 		ld	A,C
+06bc  c9            1297   1297 		ret
+                    1298   1298 
+                    1299   1299 
+                    1300   1300 I2C0_START:	;start I2C bus 0
+06bd  cd f5 05      1301   1301 		call	SDA0_OUT	;SDA = L
+06c0  cd 35 06      1302   1302 		call	SCL0_OUT	;SCL = L
+06c3  c9            1303   1303 		ret
+                    1304   1304 
+                    1305   1305 I2C1_START:	;start I2C bus 1
+06c4  cd 05 06      1306   1306 		call	SDA1_OUT	;SDA = L
+06c7  cd 45 06      1307   1307 		call	SCL1_OUT	;SCL = L
+06ca  c9            1308   1308 		ret
+                    1309   1309 
+                    1310   1310 
+                    1311   1311 I2C0_STOP:	;stop I2C bus 0
+06cb  cd f5 05      1312   1312 		call	SDA0_OUT
+06ce  cd 15 06      1313   1313 		call	SCL0_IN
+06d1  cd d5 05      1314   1314 		call	SDA0_IN	
+                    1315   1315 		;jp	EO_post_proc
+06d4  c9            1316   1316 		ret
+                    1317   1317 
+                    1318   1318 I2C1_STOP:	;stop I2C bus 1
+06d5  cd 05 06      1319   1319 		call	SDA1_OUT
+06d8  cd 25 06      1320   1320 		call	SCL1_IN
+Z80-Assembler		Release 1.4				Page 23
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+06db  cd e5 05      1321   1321 		call	SDA1_IN	
+                    1322   1322 		;jp	EO_post_proc
+06de  c9            1323   1323 		ret
+                    1324   1324 
+                    1325   1325 
+                    1326   1326 ;-------I2C SUBROUTINES END------------------------------------------
+                    1327   1327 
+                    1328   1328 
+                    1329   1329 
+                    1330   1330 
+                    1331   1331 
+                    1332   1332 TX_error:
+06df  21 2d 0d      1333   1333 		ld	HL,error	; TX error message to host
+06e2  cd 0f 08      1334   1334 		call	TX_STR
+                    1335   1335 ;		call	TX_STR_TERM
+06e5  c9            1336   1336 		ret
+                    1337   1337 
+                    1338   1338 
+                    1339   1339 
+                    1340   1340 
+                    1341   1341 ;-------Int. Routine for CT3 zero count begin------------------------------
+                    1342   1342 CT3_ZERO:
+                    1343   1343 	;flashes D0 and D1 as 2 bit binary counter
+06e6  f5            1344   1344 	push	AF
+                    1345   1345 
+06e7  3e cf         1346   1346 	ld	A,0CFh
+06e9  d3 0a         1347   1347 	out	(PIO_A_C),A	;set PIO A to bit mode
+06eb  3e fc         1348   1348 	ld	A,0FCh
+06ed  d3 0a         1349   1349 	out	(PIO_A_C),A	;set io configuration: A0 and A1 are outputs
+06ef  3a 0e 10      1350   1350 	ld	A,(TEMP3)
+06f2  3c            1351   1351 	inc	A		;inc temp3 content
+06f3  d3 08         1352   1352 	out	(PIO_A_D),A	;load temp3 onto pio port A
+06f5  32 0e 10      1353   1353 	ld	(TEMP3),A	;save temp3
+                    1354   1354 
+06f8  f1            1355   1355 	pop	AF
+06f9  fb            1356   1356 	EI		;came with V784
+06fa  ed 4d         1357   1357 	reti
+                    1358   1358 ;-------Int. Routine for CT3 zero count begin------------------------------
+                    1359   1359 
+                    1360   1360 
+                    1361   1361 
+                    1362   1362 
+                    1363   1363 
+                    1364   1364 
+                    1365   1365 
+                    1366   1366 
+                    1367   1367 ;-------SIO INTERRUPT ROUTINES for cmd line mode BEGIN-----------------------------------------
+                    1368   1368 
+                    1369   1369 
+                    1370   1370 ;-------Int Routine upon RX charcter begin-------------------------------------------------
+                    1371   1371 RX_CHA_AVAILABLE:
+                    1372   1372 ;	ei			;in V841
+06fc  f5            1373   1373 	push	AF		;backup AF
+                    1374   1374 ;	call	A_RTS_OFF ; rm V95/96
+                    1375   1375 ;	ld	a,005h		;write into WR0: select WR5
+                    1376   1376 ;	out	(SIO_A_C),A
+                    1377   1377 ;	ld	a,0E8h		;DTR active, TX 8bit, BREAK off, TX on, RTS inactive
+                    1378   1378 ;	out	(SIO_A_C),A
+                    1379   1379 
+                    1380   1380 
+Z80-Assembler		Release 1.4				Page 24
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+06fd  db 04         1381   1381 	in	A,(SIO_A_D)	;read RX character into A
+                    1382   1382 	;push	AF		;backup RX character
+                    1383   1383 	; A holds received character
+                    1384   1384 
+                    1385   1385 	;add RX character to string in cmd buffer:
+06ff  ed 4b 1c 10   1386   1386 	ld	BC,(CMD_LEN)	;BC holds current length of command
+0703  21 20 10      1387   1387 	ld	HL,CMD_PTR	;set HL at begin of cmd buffer
+0706  09            1388   1388 	add	HL,BC		;HL now holds pos to store RX char in
+                    1389   1389 	;pop	AF		;restore RX char in A
+0707  77            1390   1390 	ld	(HL),A		;write RX char where HL points to
+                    1391   1391 
+0708  fd 21 0d 10   1392   1392 	ld	IY,ECHO_STS	; IY points to ECHO_STS
+                    1393   1393 
+                    1394   1394 	;examine RX character:
+070c  fe 0d         1395   1395 	cp	0Dh		;was last RX char a CR ?
+070e  ca 32 07      1396   1396 	jp	z,RX_CR
+0711  fe 08         1397   1397 	cp	08h		;was last RX char a BS ?
+0713  ca 56 07      1398   1398 	jp	z,RX_BSP
+0716  fe 7f         1399   1399         cp	7Fh		;was last RX char a DEL ?
+0718  ca 56 07      1400   1400 	jp	z,RX_BSP
+                    1401   1401 	
+                    1402   1402 	;for any other character:
+                    1403   1403 
+                    1404   1404 	;if ECHO_STS=FFh TX received char back to host
+                    1405   1405 ;	ld	IY,ECHO_STS
+071b  fd cb 00 0e   1406   1406 	rrc	(IY+0)		;each rotating of FFh sets carry
+071f  d2 2a 07      1407   1407 	jp	nc,l_212	;if ECHO_STS<>FFh don't echo an proceed at l_212
+                    1408   1408 				;echo character (HL still points at char received last)
+0722  d3 04         1409   1409 	out	(SIO_A_D),A	;to host
+0724  cd 22 08      1410   1410 	call	TX_EMP
+0727  cd 2e 08      1411   1411 	call	RX_EMP
+                    1412   1412 
+                    1413   1413 l_212:
+072a  03            1414   1414 	inc	BC
+072b  ed 43 1c 10   1415   1415 	ld	(CMD_LEN),BC	;CMD_LEN holds current lenght of command
+                    1416   1416 	;sub	A		;comm. in V841
+                    1417   1417 	;ld	(CMD_STS),A	;comm. in V841 ;set or leave CMD status  "incomplete"
+                    1418   1418 ;	call	A_RTS_ON	;V877
+072f  c3 68 07      1419   1419 	jp	eo_rx_cha_ava
+                    1420   1420 ;	pop	AF
+                    1421   1421 ;	reti
+                    1422   1422 
+                    1423   1423 
+                    1424   1424 
+                    1425   1425 	;-------process cr character begin----------
+                    1426   1426 RX_CR:
+                    1427   1427 ;	call	SIO_A_DI
+                    1428   1428 
+0732  fd cb 00 0e   1429   1429 	rrc	(IY+0)		;each rotating of FFh sets carry
+0736  d2 43 07      1430   1430 	jp	nc,l_220	;if ECHO_STS<>FFh don't TX line feed an proceed at l_220
+                    1431   1431 				;(ECHO is ON if ECHO_STS=FFh)
+                    1432   1432 
+0739  21 7d 0e      1433   1433 	ld	HL,NEW_LINE	;transmit new line
+073c  cd 0f 08      1434   1434 	call	TX_STR
+073f  ed 4b 1c 10   1435   1435 	ld	BC,(CMD_LEN)	;TX_STR modifies BC, so restore BC from CMD_LEN
+                    1436   1436 
+0743  ed 43 1e 10   1437   1437 l_220:  ld	(IN_LEN),BC	;copy CMD_LEN into IN_LEN
+                    1438   1438 
+0747  3e 01         1439   1439 	ld	A,1
+0749  32 02 10      1440   1440 	ld	(CMD_STS),A	;set CMD status to "complete"
+Z80-Assembler		Release 1.4				Page 25
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    1441   1441 ;	call	SIO_A_DI	;disable SIO_A interrupts ;in V841
+                    1442   1442 
+074c  97            1443   1443 	sub	A
+074d  32 1c 10      1444   1444 	ld	(CMD_LEN),A	;clear CMD_LEN
+0750  32 1d 10      1445   1445 	ld	(CMD_LEN+1),A
+                    1446   1446 
+                    1447   1447 ;	call	A_RTS_OFF
+0753  c3 68 07      1448   1448 	jp	eo_rx_cha_ava
+                    1449   1449 
+                    1450   1450 ;	pop	AF		;restore AF
+                    1451   1451 ;	reti			;leave procedure but do not enable interupts
+                    1452   1452 	;-------process cr character end---------------
+                    1453   1453 
+                    1454   1454 
+                    1455   1455 
+                    1456   1456 	;-------process backspace charcter begin-----------
+0756  21 ff ff      1457   1457 RX_BSP:	ld	HL,0FFFFh
+0759  09            1458   1458 	add	HL,BC			;carry is set if CMD_LEN>0
+075a  d2 68 07      1459   1459 	jp	nc,END_OF_RX_BSP	;do not BACKSPACE if CMD_LEN=0
+                    1460   1460 
+075d  0b            1461   1461 	dec	BC		;if CMD_LEN>0 then CMD_LEN-1
+075e  ed 43 1c 10   1462   1462 	ld	(CMD_LEN),BC	;update CMD_LEN
+                    1463   1463 
+0762  21 80 0e      1464   1464 	ld	HL,BS_SP_BS
+0765  cd 0f 08      1465   1465 	call	TX_STR
+                    1466   1466 ;	call	A_RTS_ON	;V877
+                    1467   1467 
+                    1468   1468 END_OF_RX_BSP:
+                    1469   1469 	;sub 	A		;comm. in V841
+                    1470   1470 	;ld	(CMD_STS),A	;comm. in V841 ;set or leave CMD status  "incomplete"
+                    1471   1471 ;	pop	AF
+                    1472   1472 ;	reti
+                    1473   1473 	;-------process backspace character end-----------	
+                    1474   1474 
+                    1475   1475 eo_rx_cha_ava:
+                    1476   1476 ;	call	A_RTS_ON
+0768  f1            1477   1477 	pop	AF
+0769  fb            1478   1478 	ei		; ins V95/96
+076a  ed 4d         1479   1479 	reti
+                    1480   1480 	
+                    1481   1481 ;-------Int Routine upon RX charcter end---------------------------------------------------	
+                    1482   1482 
+                    1483   1483 
+                    1484   1484 
+                    1485   1485 ;-------poll CMD_STS loop------------------------------
+                    1486   1486 	;waits until "cmd complete"
+                    1487   1487 	;modifies all registers
+                    1488   1488 poll_CMD_cpl:
+                    1489   1489 ;	call	SIO_A_RESET
+                    1490   1490 ;	call	A_RTS_ON	; rm v95/96
+                    1491   1491 l_690:
+076c  fb            1492   1492 	ei
+                    1493   1493 ;	call	A_RTS_ON	;V877 ; rm V95/96
+076d  76            1494   1494 	halt
+076e  3a 02 10      1495   1495 	ld	A,(CMD_STS)
+0771  fe 01         1496   1496 	cp	1h		;poll for "cmd complete"
+0773  c2 6c 07      1497   1497 	jp	nz,l_690
+                    1498   1498 
+                    1499   1499 ;	di
+0776  97            1500   1500 	sub	A
+Z80-Assembler		Release 1.4				Page 26
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0777  32 02 10      1501   1501 	ld	(CMD_STS),A
+                    1502   1502 ;	call	A_RTS_OFF
+                    1503   1503 ;	call	SIO_A_DI
+077a  c9            1504   1504 	RET
+                    1505   1505 
+                    1506   1506 
+                    1507   1507 
+                    1508   1508 
+                    1509   1509 
+                    1510   1510 
+                    1511   1511 ;-------Int routine upon special RX condition begin---------------------
+                    1512   1512 SPEC_RX_CONDITON:
+077b  c3 00 00      1513   1513 	jp	WARM_START
+                    1514   1514 ;-------Int Routine upon special RX condition end--------------------------
+                    1515   1515 
+                    1516   1516 
+                    1517   1517 
+                    1518   1518 
+                    1519   1519 
+                    1520   1520 SIO_A_RESET:
+                    1521   1521 	;set up TX and RX:
+077e  3e 30         1522   1522 	ld	a,00110000b	;write into WR0: error reset, select WR0
+0780  d3 06         1523   1523 	out	(SIO_A_C),A
+                    1524   1524 
+0782  3e 18         1525   1525 	ld	a,018h		;write into WR0: channel reset
+0784  d3 06         1526   1526 	out	(SIO_A_C),A
+                    1527   1527 
+0786  3e 04         1528   1528 	ld	a,004h		;write into WR0: select WR4
+0788  d3 06         1529   1529 	out	(SIO_A_C),A
+078a  3e 44         1530   1530 	ld	a,44h		;44h write into WR4: clkx16,1 stop bit, no parity
+078c  d3 06         1531   1531 	out	(SIO_A_C),A
+                    1532   1532 
+078e  3e 05         1533   1533 	ld	a,005h		;write into WR0: select WR5
+0790  d3 06         1534   1534 	out	(SIO_A_C),A
+0792  3e e8         1535   1535 	ld	a,0E8h		;DTR active, TX 8bit, BREAK off, TX on, RTS inactive
+0794  d3 06         1536   1536 	out	(SIO_A_C),A
+                    1537   1537 
+0796  3e 01         1538   1538 	ld	a,01h		;write into WR0: select WR1
+0798  d3 07         1539   1539 	out	(SIO_B_C),A
+079a  3e 04         1540   1540 	ld	a,00000100b	;no interrupt in CH B, special RX condition affects vect	
+079c  d3 07         1541   1541 	out	(SIO_B_C),A
+                    1542   1542 
+079e  3e 02         1543   1543 	ld	a,02h		;write into WR0: select WR2
+07a0  d3 07         1544   1544 	out	(SIO_B_C),A
+07a2  3e 00         1545   1545 	ld	a,0h		;write into WR2: cmd line int vect (see int vec table)
+                    1546   1546 				;bits D3,D2,D1 are changed according to RX condition
+07a4  d3 07         1547   1547 	out	(SIO_B_C),A
+                    1548   1548 
+07a6  3e 01         1549   1549 	ld	a,01h		;write into WR0: select WR1
+07a8  d3 06         1550   1550 	out	(SIO_A_C),A
+07aa  3e 18         1551   1551 	ld	a,00011000b	;interrupt on all RX characters, parity is not a spec RX condition
+                    1552   1552 				;buffer overrun is a spec RX condition
+07ac  d3 06         1553   1553 	out	(SIO_A_C),A
+                    1554   1554 
+                    1555   1555 SIO_A_EI:
+                    1556   1556 	;enable SIO channel A RX
+07ae  3e 03         1557   1557 	ld	a,003h		;write into WR0: select WR3
+07b0  d3 06         1558   1558 	out	(SIO_A_C),A
+                    1559   1559 ;	ld	a,0C1h		;RX 8bit, auto enable off, RX on
+07b2  3e e1         1560   1560 	ld	a,0E1h		;RX 8bit, auto enable on, RX on	;v93
+Z80-Assembler		Release 1.4				Page 27
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+07b4  d3 06         1561   1561 	out	(SIO_A_C),A	
+                    1562   1562 	;Channel A RX active
+07b6  c9            1563   1563 	RET
+                    1564   1564 
+                    1565   1565 
+                    1566   1566 SIO_A_DI:
+                    1567   1567 	;disable SIO channel A RX
+07b7  3e 03         1568   1568 	ld	a,003h		;write into WR0: select WR3
+07b9  d3 06         1569   1569 	out	(SIO_A_C),A
+                    1570   1570 ;	ld	a,0C0h		;RX 8bit, auto enable off, RX off
+07bb  3e e0         1571   1571 	ld	a,0E0h		;RX 8bit, auto enable on, RX off	;v93
+07bd  d3 06         1572   1572 	out	(SIO_A_C),A	
+                    1573   1573 	;Channel A RX inactive
+07bf  c9            1574   1574 	ret
+                    1575   1575 
+                    1576   1576 A_RTS_OFF:
+07c0  3e 05         1577   1577 	ld	a,005h		;write into WR0: select WR5
+07c2  d3 06         1578   1578 	out	(SIO_A_C),A
+07c4  3e e8         1579   1579 	ld	a,0E8h		;DTR active, TX 8bit, BREAK off, TX on, RTS inactive
+07c6  d3 06         1580   1580 	out	(SIO_A_C),A
+07c8  c9            1581   1581 	ret
+                    1582   1582 	
+                    1583   1583 A_RTS_ON:
+07c9  3e 05         1584   1584 	ld	a,005h		;write into WR0: select WR5
+07cb  d3 06         1585   1585 	out	(SIO_A_C),A
+07cd  3e ea         1586   1586 	ld	a,0EAh		;DTR active, TX 8bit, BREAK off, TX on, RTS active
+07cf  d3 06         1587   1587 	out	(SIO_A_C),A
+07d1  c9            1588   1588 	ret
+                    1589   1589 
+                    1590   1590 
+                    1591   1591 
+                    1592   1592 ;-------SUBROUTINES BEGIN-------------------------------------------
+                    1593   1593 ;-asks host for a number
+                    1594   1594 ;-smallest unit is BYTE (so host must send at least 2 characters)
+                    1595   1595 ;-half bytes are not accepted (e.g. it is invalid if host sends "123")
+                    1596   1596 ;-in case of invalid input a return to EO_post_proc is performed (by manipulation of stack) !
+                    1597   1597 ;-does not check content of characters (e.g. result of sending "nice" is unknown)
+                    1598   1598 ;-the result of the last 2 characters in this number is returned in A
+                    1599   1599 ;-the result of the last 4 characters in this number is returned in HL, wherein H holds high
+                    1600   1600 ; byte and L holds low byte:
+                    1601   1601 ; (e.g. sending "123456" returns A holding 56h, and HL holding 3456h)
+                    1602   1602 ; all other characters get lost
+                    1603   1603 ;-modifies all registers except the background registers
+                    1604   1604 ;-loads every converted byte into long number storage (lowbyte at lowest address)
+                    1605   1605 
+                    1606   1606 req_number:	;call 	set_CMD_incpl	;clear CMD status	;comm. V841
+                    1607   1607 		;call	SIO_A_EI
+                    1608   1608 		;ei			;comm. V841
+07d2  cd 6c 07      1609   1609 		call	poll_CMD_cpl
+07d5  3a 1e 10      1610   1610 		ld	A,(IN_LEN)	;get lowbyte of IN_LEN
+07d8  cb 3f         1611   1611 		srl	A		;divide by 2 / A holds number of words in input buffer
+07da  47            1612   1612 		ld	B,A		;copy into B
+07db  d2 eb 07      1613   1613 		jp	nc,l_133	;if IN_LEN was odd	
+07de  21 2d 0d      1614   1614 		ld	HL,error	;TX ..?	
+07e1  cd 0f 08      1615   1615 		call	TX_STR
+07e4  21 70 04      1616   1616 		ld	HL,EO_post_proc	;replace return address on stack by address of EO_post_proc
+07e7  33            1617   1617 		inc	SP		
+07e8  33            1618   1618 		inc	SP
+07e9  e5            1619   1619 		push	HL		
+07ea  c9            1620   1620 		ret			;and return
+Z80-Assembler		Release 1.4				Page 28
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    1621   1621 		
+07eb  11 20 10      1622   1622 l_133:		ld	DE,CMD_PTR
+07ee  dd 21 80 10   1623   1623 		ld	IX,NUMBER	;IX points to beginning of long number storage
+07f2  c5            1624   1624 l_132:		push	BC		;backup number of words on stack
+07f3  cd 4d 08      1625   1625 		call	conv_RX_2ASC2BIN;convert word in input buffer to byte , DE points to word
+                    1626   1626 					;A holds result
+07f6  dd 77 00      1627   1627 		ld	(IX+0),A	;load A into long number storage
+07f9  dd 23         1628   1628 		inc	IX		;advance pointer of long number storage by 1
+07fb  13            1629   1629 		inc	DE		;advance DE by two
+07fc  13            1630   1630 		inc	DE		;so that it point to next word in input buffer
+07fd  c1            1631   1631 		pop	BC		;restore number of words from stack
+07fe  cb 40         1632   1632 		bit	0,B		;check for last cycle: bit 0 of counter is set in last cycle
+0800  c2 04 08      1633   1633 		jp	nz,l_135
+0803  67            1634   1634 		ld	H,A
+0804  10 ec         1635   1635 l_135:		djnz	l_132		;loop to l_132 until all words are read from buffer
+0806  6f            1636   1636 		ld	L,A
+0807  c9            1637   1637 		ret			;return
+                    1638   1638 				
+                    1639   1639 
+                    1640   1640 
+                    1641   1641 
+                    1642   1642 
+                    1643   1643 
+                    1644   1644 
+                    1645   1645 
+                    1646   1646 
+                    1647   1647 ;-----------------------------------------------------
+                    1648   1648 
+                    1649   1649 
+                    1650   1650 ;TX_STR_TERM:
+                    1651   1651 	;modifies HL, A
+                    1652   1652 ;	ld	HL,STR_TERM
+                    1653   1653 ;	call	TX_STR
+                    1654   1654 ;	ret
+                    1655   1655 
+                    1656   1656 	
+                    1657   1657 TX_STD_OUT:
+0808  21 40 10      1658   1658 	ld	HL,STD_OUT
+080b  cd 0f 08      1659   1659 	call	TX_STR
+                    1660   1660 ;	call	TX_STR_TERM
+080e  c9            1661   1661 	ret
+                    1662   1662 
+                    1663   1663 TX_STR: ;TX string, HL points to first byte address
+                    1664   1664 	;modifies A, HL , BC
+080f  7e            1665   1665 TX_CHA:	ld	a,(HL)
+0810  d3 04         1666   1666 	out	(SIO_A_D),A
+0812  cd 22 08      1667   1667 	call	TX_EMP
+                    1668   1668 ;	call	host_rdy
+0815  97            1669   1669 	sub	a
+0816  ed a1         1670   1670 	cpi		;look for string termination character 0h
+0818  c2 0f 08      1671   1671 	jp	nz,TX_CHA
+081b  32 0b 10      1672   1672 	ld	(OUT_LEN),A	;set output string length lowbyte to 0
+081e  32 0c 10      1673   1673 	ld	(OUT_LEN+1),A	;set output string length highbyte to 0
+0821  c9            1674   1674 	ret
+                    1675   1675 
+                    1676   1676 
+                    1677   1677 TX_EMP:	; check for TX buffer empty
+                    1678   1678 	;modifies A
+0822  97            1679   1679 	sub	a		;clear a, write into WR0: select RR0
+0823  3c            1680   1680 	inc	a		;select RR1
+Z80-Assembler		Release 1.4				Page 29
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0824  d3 06         1681   1681 	out	(SIO_A_C),A
+0826  db 06         1682   1682 	in	A,(SIO_A_C)		;read RRx
+0828  cb 47         1683   1683 	bit	0,A
+082a  ca 22 08      1684   1684 	jp	z,TX_EMP
+082d  c9            1685   1685 	ret
+                    1686   1686 	
+                    1687   1687 RX_EMP:	; check for RX buffer empty
+                    1688   1688 	;modifies A
+082e  97            1689   1689 	sub	a		;clear a, write into WR0: select RR0
+082f  d3 06         1690   1690 	out	(SIO_A_C),A
+0831  db 06         1691   1691 	in	A,(SIO_A_C)	;read RRx
+0833  cb 47         1692   1692 	bit	0,A
+0835  c8            1693   1693 	ret	z          	;if any rx char left in rx buffer
+0836  db 04         1694   1694 	in	A,(SIO_A_D)     ;read that char
+0838  c3 2e 08      1695   1695 	jp	RX_EMP
+                    1696   1696 
+                    1697   1697 
+                    1698   1698 ;v93
+                    1699   1699 ;host_rdy:
+                    1700   1700 ;	ld	a,10h		; write cmd 2 into WR0: select RR0
+                    1701   1701 ;	out	(SIO_A_C),A
+                    1702   1702 ;l_551:	in	A,(SIO_A_C)		;read RR0
+                    1703   1703 ;	bit	5,A	;when host ready bit 5 (CTS) is H
+                    1704   1704 ;	jp	z,l_551
+                    1705   1705 ;	ret
+                    1706   1706 	
+                    1707   1707 ;---------------------------------------------------
+                    1708   1708 
+                    1709   1709 
+                    1710   1710 
+                    1711   1711 
+                    1712   1712 
+                    1713   1713 
+                    1714   1714 
+                    1715   1715 
+                    1716   1716 
+                    1717   1717 ;-------delay----------------
+                    1718   1718 
+                    1719   1719 WAIT_2:	; delay
+083b  f5            1720   1720 	push	AF
+083c  c5            1721   1721 	push	BC
+083d  d5            1722   1722 	push	DE
+083e  11 00 05      1723   1723 	ld	de,0500h
+0841  10 fe         1724   1724 l_W20:	djnz	l_W20
+0843  1b            1725   1725 	dec 	de
+0844  7a            1726   1726         ld     	a,d
+0845  b7            1727   1727         or     	a      ;update zero flag
+0846  c2 41 08      1728   1728 	jp	nz,l_W20
+0849  d1            1729   1729 	pop	DE
+084a  c1            1730   1730 	pop	BC
+084b  f1            1731   1731 	pop	AF
+084c  c9            1732   1732         ret
+                    1733   1733 
+                    1734   1734 
+                    1735   1735 
+                    1736   1736 
+                    1737   1737 
+                    1738   1738 
+                    1739   1739 
+                    1740   1740 
+Z80-Assembler		Release 1.4				Page 30
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    1741   1741 
+                    1742   1742 
+                    1743   1743 ;-------convert 2 received ASCII char to byte begin-----------------------------
+                    1744   1744 ;	DE points to input in CMD_PTR and CMD_PTR+1
+                    1745   1745 ;	output in A
+                    1746   1746 ;	modifies A, B  
+                    1747   1747 conv_RX_2ASC2BIN:
+                    1748   1748 		;ld	DE,CMD_PTR	;read first char in cmd buffer
+084d  d5            1749   1749 		push	DE		;came with V783
+084e  1a            1750   1750 		ld	A,(DE)
+084f  cb 77         1751   1751 		bit	6,A
+0851  ca 59 08      1752   1752 		jp	z,hi_ni_09	;if bit 6 not set,it's below Ah
+0854  c6 09         1753   1753 		add	A,9h
+0856  c3 5b 08      1754   1754 		jp	sh_4xl
+0859  d6 30         1755   1755 hi_ni_09:	sub	30h		;convert to 4 bit number
+085b  cb 27         1756   1756 sh_4xl:		sla	A
+085d  cb 27         1757   1757 		sla	A
+085f  cb 27         1758   1758 		sla	A
+0861  cb 27         1759   1759 		sla	A
+0863  47            1760   1760 		ld	B,A		;B[7..4] hold high nibble 
+                    1761   1761 
+0864  13            1762   1762 		inc	DE		;read 2nd char in cmd buffer
+0865  1a            1763   1763 		ld	A,(DE)
+0866  cb 77         1764   1764 		bit	6,A
+0868  ca 72 08      1765   1765 		jp	z,lo_ni_09	;if bit 6 not set,it's below Ah
+086b  c6 09         1766   1766 		add	A,9h
+086d  e6 0f         1767   1767 		and	0Fh
+086f  c3 74 08      1768   1768 		jp	EO_conv_RX_2ASC2BIN
+0872  d6 30         1769   1769 lo_ni_09:	sub	30h		;convert to 4 bit number
+                    1770   1770 
+                    1771   1771 EO_conv_RX_2ASC2BIN:
+0874  b0            1772   1772 		or	B		;A holds result
+0875  d1            1773   1773 		pop	DE		;came with V783
+0876  c9            1774   1774 		RET
+                    1775   1775 ;-------convert 2 received ASCII char to byte end----------------------------
+                    1776   1776 
+                    1777   1777 
+                    1778   1778 
+                    1779   1779 
+                    1780   1780 
+                    1781   1781 ;-------convert byte to 2 ASCII char begin---------------------------
+                    1782   1782 ;	input value in A
+                    1783   1783 ;	output high nibble in D, low nibble in C
+                    1784   1784 ; modifies A,BC,D
+                    1785   1785 
+                    1786   1786 conv_BYTE2ASC:
+0877  4f            1787   1787 		ld	C,A		;backup given byte in C
+                    1788   1788 
+                    1789   1789 proc_hi_ni:	;process high nibble
+0878  e6 f0         1790   1790 		and	0F0h		;clear low nibble
+087a  cb 3f         1791   1791 		srl	A		;move high nibble into low nibble
+087c  cb 3f         1792   1792 		srl	A
+087e  cb 3f         1793   1793 		srl	A
+0880  cb 3f         1794   1794 		srl	A
+                    1795   1795 
+0882  47            1796   1796 		ld	B,A		;backup A in B
+0883  3e 09         1797   1797 		ld	A,9		
+0885  90            1798   1798 		sub	B
+0886  da 8f 08      1799   1799 		jp	c,ni_AF		;nibble > 9 ?
+0889  78            1800   1800 		ld	A,B		;restore nibble
+Z80-Assembler		Release 1.4				Page 31
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+088a  c6 30         1801   1801 		add	A,30h		;add 30h to make ASCII char
+088c  c3 92 08      1802   1802 		jp	hi_ni_rdy
+088f  78            1803   1803 ni_AF:		ld	A,B		;restore nibble
+0890  c6 37         1804   1804 		add	A,37h		;add 40h-9h to make ASCII char
+0892  57            1805   1805 hi_ni_rdy:	ld	D,A		;high nibble ready in D
+                    1806   1806 
+                    1807   1807 
+                    1808   1808 		;process low nibble
+0893  79            1809   1809 		ld	A,C		;restore given byte from C
+0894  e6 0f         1810   1810 		and	0Fh		;clear high nibble
+0896  47            1811   1811 		ld	B,A		;backup A in B
+0897  3e 09         1812   1812 		ld	A,9		
+0899  90            1813   1813 		sub	B
+089a  da a3 08      1814   1814 		jp	c,ni_AF2	;nibble > 9 ?
+089d  78            1815   1815 		ld	A,B		;restore nibble
+089e  c6 30         1816   1816 		add	A,30h		;add 30h to make ASCII char
+08a0  c3 a6 08      1817   1817 		jp	lo_ni_rdy
+08a3  78            1818   1818 ni_AF2:		ld	A,B		;restore nibble
+08a4  c6 37         1819   1819 		add	A,37h		;add 40h-9h to make ASCII char
+08a6  4f            1820   1820 lo_ni_rdy:	ld	C,A		;low nibble ready in C
+                    1821   1821 					;high nibble ready in D
+08a7  c9            1822   1822 		RET		
+                    1823   1823 ;-------convert byte to 2 ASCII char end---------------------------
+                    1824   1824 
+                    1825   1825 
+                    1826   1826 
+                    1827   1827 
+                    1828   1828 
+                    1829   1829 
+                    1830   1830 
+                    1831   1831 
+                    1832   1832 
+                    1833   1833 
+                    1834   1834 
+                    1835   1835 ;-------RAM size check begin---------------------------------
+                    1836   1836 RAM_SIZE_CHK:
+                    1837   1837 
+08a8  21 00 18      1838   1838 	ld	HL,RAM_BOT	;get RAM bottom as start value
+08ab  37            1839   1839     	scf			;set carry flag
+08ac  3f            1840   1840 	ccf			;comlpement carry flag
+                    1841   1841 l_ER0:	
+08ad  06 01         1842   1842 	ld	B,1h		;walking one starts at LSB
+                    1843   1843 WALK_1:	
+08af  78            1844   1844 	ld	A,B		;copy to A
+08b0  77            1845   1845 	ld	(HL),A		;write shift value into RAM
+08b1  7e            1846   1846 	ld	A,(HL)		;read shift value back from RAM
+08b2  b8            1847   1847 	cp	B
+08b3  c2 c1 08      1848   1848 	jp	nz,RAM_RANGE	;if mismatch, top of RAM+1 reached
+08b6  cb 20         1849   1849 	sla	B
+08b8  d2 af 08      1850   1850 	jp	nc,WALK_1
+                    1851   1851 
+08bb  97            1852   1852 	sub	A		;clean up RAM location
+08bc  77            1853   1853 	ld	(HL),A
+                    1854   1854 
+08bd  23            1855   1855 	inc	HL		;inc RAM address
+08be  c3 ad 08      1856   1856 	jp	l_ER0
+                    1857   1857 		
+                    1858   1858 RAM_RANGE:
+08c1  2b            1859   1859 	dec	HL		;last checked address - 1
+08c2  22 07 10      1860   1860 	ld	(RAM_TOP),HL
+Z80-Assembler		Release 1.4				Page 32
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+08c5  7c            1861   1861 	ld	A,H
+08c6  cd d4 08      1862   1862 	call	APP_ACCU
+08c9  2a 07 10      1863   1863 	ld	HL,(RAM_TOP)
+08cc  7d            1864   1864 	ld	A,L
+08cd  cd d4 08      1865   1865 	call	APP_ACCU
+08d0  cd 08 08      1866   1866 	call	TX_STD_OUT
+08d3  c9            1867   1867 	ret	
+                    1868   1868 ;--------RAM size check end -----------------------------------------------
+                    1869   1869 
+                    1870   1870 
+                    1871   1871 
+                    1872   1872 
+                    1873   1873 
+                    1874   1874 
+                    1875   1875 
+                    1876   1876 ;--------------------------------------------------------------------------
+                    1877   1877 APP_ACCU:
+                    1878   1878 	;converts A content into 2 ASCII characters in C and D
+                    1879   1879 	;C holds low nibble, D holds high nibble
+                    1880   1880 	;appends characters in C and D to STD_OUT
+                    1881   1881 	;appends 0h as string termination
+                    1882   1882 	;increments OUT_LEN by two
+                    1883   1883 	;modifies A,BC,DE,IX,IY
+                    1884   1884 
+08d4  cd 77 08      1885   1885 	call	conv_BYTE2ASC	;converts A to 2xASCII chars in D and C
+08d7  41            1886   1886 	ld	B,C
+08d8  4a            1887   1887 	ld	C,D		;high nibble in C, low nibble in B
+08d9  37            1888   1888 	scf			;set carry flag
+                    1889   1889 APP_CHAR:
+                    1890   1890 	;requires char to append in C
+                    1891   1891 	;returns at label l_933 if carry not set
+08da  f5            1892   1892 	push	AF		;backup carry status
+08db  dd 21 40 10   1893   1893 	ld	IX,STD_OUT	;IX points to STD_OUT begin
+                    1894   1894 	;ld	A,(OUT_LEN)	;get current output string length
+08df  ed 5b 0b 10   1895   1895 	ld	DE,(OUT_LEN)	;get current output string length
+08e3  fd 21 0b 10   1896   1896 	ld	IY,OUT_LEN	;IY points to OUT_LEN
+                    1897   1897 	;ld	D,0h
+                    1898   1898 	;ld	E,A
+08e7  dd 19         1899   1899 	add	IX,DE		;IX points to last pos in string
+                    1900   1900 
+08e9  dd 71 00      1901   1901 	ld	(IX+0),C	;append C to string
+08ec  fd 34 00      1902   1902 	inc	(IY+0)		;OUT_LEN+1
+08ef  dd 36 01 00   1903   1903 	ld	(IX+1),0h	;append termination string
+08f3  f1            1904   1904 	pop	AF		;restore carry status
+08f4  d0            1905   1905 l_933:	ret	nc		;return if carry not set
+                    1906   1906 
+08f5  dd 70 01      1907   1907 	ld	(IX+1),B	;else append B to string (overwrite former termination)
+08f8  fd 34 00      1908   1908 	inc	(IY+0)		;OUT_LEN+1
+08fb  dd 36 02 00   1909   1909 	ld	(IX+2),0h	;append termination to string
+08ff  c9            1910   1910 	RET
+                    1911   1911 
+                    1912   1912 ;---------------------------------------------------------------------
+                    1913   1913 
+                    1914   1914 
+                    1915   1915 
+                    1916   1916 READ_MEM:	;reads memory content starting where HL points to
+                    1917   1917 		;transmits row by row, so STD_OUT holds max.  52d characters
+                    1918   1918 		;modifies all registers !
+0900  06 10         1919   1919 		ld	B,10h		;read 16 lines
+0902  c5            1920   1920 RD_HL_ROW:	push	BC
+Z80-Assembler		Release 1.4				Page 33
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    1921   1921 
+                    1922   1922 		;load first address of first row in STD_OUT
+0903  7c            1923   1923 		ld	A,H		;append high byte of mem address
+0904  d9            1924   1924 		EXX			;backup HL in background register
+0905  cd d4 08      1925   1925 		call	APP_ACCU
+0908  d9            1926   1926 		EXX			;restore HL from background register
+0909  7d            1927   1927 		ld	A,L		;append low byte of mem address
+090a  d9            1928   1928 		EXX			;backup HL in background register
+090b  cd d4 08      1929   1929 		call	APP_ACCU
+090e  37            1930   1930 		scf			;add space character
+090f  3f            1931   1931 		ccf
+0910  0e 20         1932   1932 		ld	C,020h
+0912  cd da 08      1933   1933 		call	APP_CHAR
+0915  d9            1934   1934 		EXX			;restore HL from background register
+                    1935   1935 		;first address of first row ready in STD_OUT
+                    1936   1936 
+0916  06 10         1937   1937 		ld	B,10h		;read 16 columns
+0918  7e            1938   1938 RD_HL_COL:	ld	A,(HL)		;read memory content into A
+0919  d9            1939   1939 		EXX			;backup HL in background register
+091a  cd d4 08      1940   1940 		call	APP_ACCU
+091d  37            1941   1941 		scf			;append space character
+091e  3f            1942   1942 		ccf
+091f  0e 20         1943   1943 		ld	C,020h
+0921  cd da 08      1944   1944 		call	APP_CHAR
+0924  d9            1945   1945 		EXX			;restore HL from background register
+0925  23            1946   1946 		inc	HL		;HL points to next mem position	
+0926  10 f0         1947   1947 		djnz	RD_HL_COL	;loop until 16 columns are read
+0928  d9            1948   1948 		EXX			;backup HL in background register
+0929  cd 08 08      1949   1949 		call	TX_STD_OUT	;TX row to host
+092c  21 7d 0e      1950   1950 		ld	HL,NEW_LINE	;transmit new line
+092f  cd 0f 08      1951   1951 		call	TX_STR
+0932  d9            1952   1952 		EXX			;restore HL from background register
+0933  c1            1953   1953 		pop	BC		;restore BC from stack
+0934  10 cc         1954   1954 		djnz	RD_HL_ROW	;loop until 16 rows are read
+0936  c9            1955   1955 		ret
+                    1956   1956 
+                    1957   1957 ;----------------------------------------------------------------------------
+                    1958   1958 div_by_2:	
+                    1959   1959 ;divides content of BC by 2
+                    1960   1960 ;writes the result back into BC !
+                    1961   1961 ;modifies BC
+0937  cb 38         1962   1962 		srl	B
+0939  da 3f 09      1963   1963 		jp	c,l_713
+093c  cb 39         1964   1964 		srl	C
+093e  c9            1965   1965 		ret
+093f  cb 39         1966   1966 l_713:		srl	C
+0941  cb f9         1967   1967 		set	7,C
+0943  c9            1968   1968 		ret
+                    1969   1969 
+                    1970   1970 
+                    1971   1971 	
+                    1972   1972 
+                    1973   1973 ;----------------------------------------------------------------------------
+                    1974   1974 TX_NUMBER:
+                    1975   1975 ;transfers long number to host
+                    1976   1976 ;HL points to low byte of number
+                    1977   1977 ;BC holds number of bytes
+                    1978   1978 ;modifies A, HL, BC
+0944  09            1979   1979 		add	HL,BC		
+0945  2b            1980   1980 l_844:		dec	HL		;HL points to high byte of number
+Z80-Assembler		Release 1.4				Page 34
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0946  7e            1981   1981 		ld	A,(HL)
+0947  c5            1982   1982 		push	BC
+0948  cd d4 08      1983   1983 		call	APP_ACCU	;append byte to STD_OUT
+094b  c1            1984   1984 		pop	BC
+094c  0b            1985   1985 		dec	BC		;number of bytes - 1
+094d  78            1986   1986 		ld	A,B
+094e  fe 00         1987   1987 		cp	0		;test high byte of BC for 0
+0950  c2 45 09      1988   1988 		jp	nz,l_844	;if yes,
+0953  79            1989   1989 		ld	A,C		
+0954  fe 00         1990   1990 		cp	0		;test low byte of BC for 0
+0956  c2 45 09      1991   1991 		jp	nz,l_844	;if yes,
+0959  cd 08 08      1992   1992 		call	TX_STD_OUT	;TX input value to host
+095c  c9            1993   1993 		ret
+                    1994   1994 ;-----------------------------------------------------------------------------
+                    1995   1995 
+                    1996   1996 
+                    1997   1997 
+                    1998   1998 
+                    1999   1999 req_snd:	;requests source, number, destination address
+095d  21 3c 0d      2000   2000 		ld	HL,source16
+0960  cd 0f 08      2001   2001 		call	TX_STR
+                    2002   2002 ;		call	TX_STR_TERM
+0963  cd d2 07      2003   2003 		call	req_number	;get source address from host
+0966  22 0f 10      2004   2004 		ld	(SOURCE_ADR),HL
+                    2005   2005 req_nd:
+0969  21 5b 0d      2006   2006 		ld	HL,count16
+096c  cd 0f 08      2007   2007 		call	TX_STR
+                    2008   2008 ;		call	TX_STR_TERM
+096f  cd d2 07      2009   2009 		call	req_number	;get number of bytes to burn from host
+0972  22 13 10      2010   2010 		ld	(NUMB_OF_BYTES),HL
+                    2011   2011 req_d:
+0975  21 49 0d      2012   2012 		ld	HL,destin16
+0978  cd 0f 08      2013   2013 		call	TX_STR
+                    2014   2014 ;		call	TX_STR_TERM
+097b  cd d2 07      2015   2015 		call	req_number	;get destination address from host
+097e  22 11 10      2016   2016 		ld	(DEST_ADR),HL
+                    2017   2017 
+                    2018   2018 		;prepare block transfer and search commands like ldi, cpi, cpir, ldir
+0981  2a 0f 10      2019   2019 		ld	HL,(SOURCE_ADR)
+0984  ed 5b 11 10   2020   2020 		ld	DE,(DEST_ADR)
+0988  ed 4b 13 10   2021   2021 		ld	BC,(NUMB_OF_BYTES)
+098c  c9            2022   2022 		ret
+                    2023   2023 
+                    2024   2024 
+                    2025   2025 
+                    2026   2026 
+098d  21 6d 0d      2027   2027 fill_mem:	ld	HL,new_dat
+0990  cd 0f 08      2028   2028 		call	TX_STR
+                    2029   2029 ;		call	TX_STR_TERM
+0993  cd d2 07      2030   2030 		call	req_number	;get fill value from host
+0996  32 01 10      2031   2031 		ld	(SCRATCH),A	;save fill value in scratch
+                    2032   2032 
+0999  cd 69 09      2033   2033 		call	req_nd		;request number, destination address
+                    2034   2034 		
+099c  ed 5b 11 10   2035   2035 		ld	DE,(DEST_ADR)
+09a0  ed 4b 13 10   2036   2036 		ld	BC,(NUMB_OF_BYTES)
+                    2037   2037 l_fi0:
+09a4  21 01 10      2038   2038 		ld	HL,SCRATCH	;set source pointer to scratch
+09a7  ed a0         2039   2039 		ldi			;copy fill value (from scratch) to destination address
+09a9  ea a4 09      2040   2040 		jp	pe,l_fi0	;loop until block filled
+Z80-Assembler		Release 1.4				Page 35
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+09ac  c9            2041   2041 		ret
+                    2042   2042 
+                    2043   2043 
+                    2044   2044 cmp_mem:
+                    2045   2045 		;ld	HL,(SOURCE_ADR)
+                    2046   2046 		;ld	DE,(DEST_ADR)
+                    2047   2047 		;ld	BC,(NUMB_OF_BYTES)
+09ad  1a            2048   2048 l_cmp0:		ld	A,(DE)		;load data at dest. address into A
+09ae  32 01 10      2049   2049 		ld	(SCRATCH),A	;place copy of data in scratch
+09b1  ed a1         2050   2050 		cpi			;cmp data at source address with data at dest. addr.
+09b3  c2 bb 09      2051   2051 		jp	nz,l_cmp_err
+09b6  13            2052   2052 		inc	DE		;advance dest. pointer
+09b7  ea ad 09      2053   2053 		jp	pe,l_cmp0	;loop until byte counter bc is 0
+09ba  c9            2054   2054 		ret
+09bb  2b            2055   2055 l_cmp_err:	dec	HL		;set source pointer back at address where error occured
+09bc  e5            2056   2056 		push 	HL		;save current source address
+09bd  d5            2057   2057 		push	DE		;save current dest. address
+                    2058   2058 
+09be  21 2d 0d      2059   2059 		ld	HL,error	;tx "..?"
+09c1  cd 0f 08      2060   2060 		call	TX_STR
+09c4  21 39 0e      2061   2061 		ld	HL,at		;tx "at"
+09c7  cd 0f 08      2062   2062 		call	TX_STR
+                    2063   2063 
+09ca  d1            2064   2064 		pop	DE		;restore current dest. address
+09cb  7a            2065   2065 		ld	A,D
+09cc  d5            2066   2066 		push	DE
+09cd  cd d4 08      2067   2067 		call	APP_ACCU
+09d0  d1            2068   2068 		pop	DE
+09d1  7b            2069   2069 		ld	A,E
+09d2  cd d4 08      2070   2070 		call	APP_ACCU
+09d5  cd 08 08      2071   2071 		call	TX_STD_OUT	;tx current dest. address to host
+                    2072   2072 		
+09d8  21 3f 0e      2073   2073 		ld	HL,expect	;tx "exp:" to host
+09db  cd 0f 08      2074   2074 		call	TX_STR
+09de  e1            2075   2075 		pop	HL		;restore current source address
+09df  7e            2076   2076 		ld	A,(HL)
+09e0  cd d4 08      2077   2077 		call	APP_ACCU
+09e3  cd 08 08      2078   2078 		call	TX_STD_OUT	;tx current source address to host
+                    2079   2079 		
+09e6  21 4b 0e      2080   2080 		ld	HL,read		;tx "read:"
+09e9  cd 0f 08      2081   2081 		call	TX_STR	
+                    2082   2082 
+09ec  3a 01 10      2083   2083 		ld	A,(SCRATCH)	;restore from scratch data read at dest. address
+09ef  cd d4 08      2084   2084 		call	APP_ACCU
+09f2  cd 08 08      2085   2085 		call	TX_STD_OUT	;tx corrupted data to host
+                    2086   2086 
+09f5  c9            2087   2087 		ret
+                    2088   2088 
+                    2089   2089 		
+                    2090   2090 fl_prog:	;programs data into flash page wise
+09f6  21 7d 0e      2091   2091 		ld	HL,NEW_LINE	;transmit new line
+09f9  cd 0f 08      2092   2092 		call	TX_STR
+09fc  21 32 0e      2093   2093 		ld	HL,page
+09ff  cd 0f 08      2094   2094 		call	TX_STR
+0a02  97            2095   2095 		sub	A
+0a03  32 01 10      2096   2096 		ld	(SCRATCH),A	;clear scratch
+0a06  2a 0f 10      2097   2097 		ld	HL,(SOURCE_ADR)
+0a09  ed 5b 11 10   2098   2098 		ld	DE,(DEST_ADR)
+0a0d  ed 4b 13 10   2099   2099 		ld	BC,(NUMB_OF_BYTES)
+0a11  3e 80         2100   2100 l_prg0:		ld	A,80h		;per page are 80h bytes to load
+Z80-Assembler		Release 1.4				Page 36
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0a13  cd 29 0a      2101   2101 		call	tx_byte_count	;tx byte count
+0a16  3d            2102   2102 l_prg2:		dec	A		;first byte of page has number 7Fh, last byte has 0h
+0a17  ed a0         2103   2103 		ldi			;copy source_adr to dest_adr, dec bc
+0a19  e2 25 0a      2104   2104 		jp	po,l_prg3	;exit if no more bytes are left to load
+0a1c  c2 16 0a      2105   2105 		jp	nz,l_prg2	;loop until page full
+0a1f  cd c5 0a      2106   2106 		call	l_pa30ms	;pause 30ms when page full
+0a22  c3 11 0a      2107   2107 		jp	l_prg0
+0a25  cd b6 0a      2108   2108 l_prg3:		call	l_pa170ms	;pause 170ms
+0a28  c9            2109   2109 		ret		
+                    2110   2110 
+0a29  f5            2111   2111 tx_byte_count:	push 	AF
+0a2a  d5            2112   2112 		push	DE
+0a2b  e5            2113   2113 		push	HL
+0a2c  c5            2114   2114 		push	BC
+                    2115   2115 		
+0a2d  3a 01 10      2116   2116 		ld	A,(SCRATCH)
+                    2117   2117 		;inc	A
+                    2118   2118 		;ld	(SCRATCH),A
+0a30  cd d4 08      2119   2119 		call	APP_ACCU
+0a33  cd 08 08      2120   2120 		call	TX_STD_OUT	;tx page count to host		
+0a36  3a 01 10      2121   2121 		ld	A,(SCRATCH)
+0a39  3c            2122   2122 		inc	A
+0a3a  32 01 10      2123   2123 		ld	(SCRATCH),A
+                    2124   2124 
+                    2125   2125 
+0a3d  21 84 0e      2126   2126 		ld	HL,2xBS		;backspace 2 times to overwrite last output
+0a40  cd 0f 08      2127   2127 		call	TX_STR
+                    2128   2128 
+0a43  c1            2129   2129 		pop	BC
+0a44  e1            2130   2130 		pop	HL
+0a45  d1            2131   2131 		pop	DE
+0a46  f1            2132   2132 		pop	AF
+0a47  c9            2133   2133 		ret
+                    2134   2134 
+                    2135   2135 
+                    2136   2136 
+                    2137   2137 
+                    2138   2138 
+                    2139   2139 prot_off:	;disables software data protection
+0a48  cd d4 0a      2140   2140 		call	l_AA55
+0a4b  3e 80         2141   2141 		ld	A,080h
+0a4d  32 55 d5      2142   2142 		ld	(0D555h),A	;5555h
+0a50  cd d4 0a      2143   2143 		call	l_AA55
+0a53  3e 20         2144   2144 		ld	A,020h
+0a55  32 55 d5      2145   2145 		ld	(0D555h),A	;5555h
+0a58  cd b6 0a      2146   2146 		call	l_pa170ms
+0a5b  c9            2147   2147 		ret
+                    2148   2148 
+                    2149   2149 prot_on:	;enables software data protection
+0a5c  cd d4 0a      2150   2150 		call	l_AA55
+0a5f  3e a0         2151   2151 		ld	A,0A0h
+0a61  32 55 d5      2152   2152 		ld	(0D555h),A	;5555h
+0a64  cd b6 0a      2153   2153 		call	l_pa170ms
+0a67  c9            2154   2154 		ret
+                    2155   2155 
+                    2156   2156 fl_erase:	;erases complete flash
+0a68  cd d4 0a      2157   2157 		call	l_AA55
+0a6b  3e 80         2158   2158 		ld	A,080h
+0a6d  32 55 d5      2159   2159 		ld	(0D555h),A	;5555h
+0a70  cd d4 0a      2160   2160 		call	l_AA55
+Z80-Assembler		Release 1.4				Page 37
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0a73  3e 10         2161   2161 		ld	A,010h
+0a75  32 55 d5      2162   2162 		ld	(0D555h),A	;5555h
+0a78  cd b6 0a      2163   2163 		call	l_pa170ms
+0a7b  c9            2164   2164 		ret
+                    2165   2165 
+                    2166   2166 
+                    2167   2167 id_check:	;reads flash id code. must be DA45h for W29C020 type
+                    2168   2168 		;modifies all registers
+                    2169   2169 		
+0a7c  21 27 0e      2170   2170 		ld	HL,fl_id
+0a7f  cd 0f 08      2171   2171 		call	TX_STR
+                    2172   2172 				
+                    2173   2173 		;product id entry
+0a82  cd d4 0a      2174   2174 		call	l_AA55
+0a85  3e 80         2175   2175 		ld	A,080h
+0a87  32 55 d5      2176   2176 		ld	(0D555h),A	;5555h
+0a8a  cd d4 0a      2177   2177 		call	l_AA55
+0a8d  3e 60         2178   2178 		ld	A,060h
+0a8f  32 55 d5      2179   2179 		ld	(0D555h),A	;5555h
+0a92  cd b6 0a      2180   2180 		call	l_pa170ms
+                    2181   2181 		
+                    2182   2182 		;product id and boot block lockout detection mode
+0a95  3a 00 80      2183   2183 		ld	A,(08000h)	;0h
+0a98  cd d4 08      2184   2184 		call	APP_ACCU
+0a9b  3a 01 80      2185   2185 		ld	A,(08001h)	;1h
+0a9e  cd d4 08      2186   2186 		call	APP_ACCU
+                    2187   2187 
+0aa1  3a 02 80      2188   2188 		ld	A,(08002h)	;2h (for lower boot block lockout detection)
+0aa4  cd d4 08      2189   2189 		call	APP_ACCU
+0aa7  cd 08 08      2190   2190 		call	TX_STD_OUT	;TX id code to host
+                    2191   2191 
+                    2192   2192 		;product id exit
+0aaa  cd d4 0a      2193   2193 		call	l_AA55
+0aad  3e f0         2194   2194 		ld	A,0F0h
+0aaf  32 55 d5      2195   2195 		ld	(0D555h),A	;5555h
+0ab2  cd b6 0a      2196   2196 		call	l_pa170ms
+                    2197   2197 
+                    2198   2198 		;normal mode reached
+0ab5  c9            2199   2199 		ret
+                    2200   2200 
+                    2201   2201 
+                    2202   2202 		
+                    2203   2203 l_pa170ms:	;pause 170ms at 2,5Mhz
+0ab6  f5            2204   2204 		push	AF		;save AF on stack
+0ab7  c5            2205   2205 		push	BC		;save BC on stack
+0ab8  3e 80         2206   2206 		ld	A,080h	
+0aba  06 00         2207   2207 		ld	B,0h
+0abc  10 fe         2208   2208 l_133ms:	djnz	l_133ms		;1.33ms at 2,5Mhz
+0abe  3d            2209   2209 		dec	A
+0abf  c2 bc 0a      2210   2210 		jp	nz,l_133ms
+0ac2  c1            2211   2211 		pop	BC		;restore BC
+0ac3  f1            2212   2212 		pop	AF		;restore AF	
+0ac4  c9            2213   2213 		ret
+                    2214   2214 		
+                    2215   2215 
+                    2216   2216 l_pa30ms:	;pause 30ms at 2,5Mhz
+0ac5  f5            2217   2217 		push	AF		;save AF on stack
+0ac6  c5            2218   2218 		push	BC		;save BC on stack
+0ac7  3e 1a         2219   2219 		ld	A,01Ah	
+0ac9  06 00         2220   2220 		ld	B,0h
+Z80-Assembler		Release 1.4				Page 38
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0acb  10 fe         2221   2221 l_a133ms:	djnz	l_a133ms	;1.33ms at 2,5Mhz
+0acd  3d            2222   2222 		dec	A
+0ace  c2 cb 0a      2223   2223 		jp	nz,l_a133ms
+0ad1  c1            2224   2224 		pop	BC		;restore BC
+0ad2  f1            2225   2225 		pop	AF		;restore AF	
+0ad3  c9            2226   2226 		ret
+                    2227   2227 
+                    2228   2228 
+                    2229   2229 l_AA55:		;modifies A
+0ad4  3e aa         2230   2230 		ld	A,0AAh
+0ad6  32 55 d5      2231   2231 		ld	(0D555h),A	;5555h
+0ad9  3e 55         2232   2232 		ld	A,055h
+0adb  32 aa aa      2233   2233 		ld	(0AAAAh),A	;2AAAh
+0ade  c9            2234   2234 		ret
+                    2235   2235 
+                    2236   2236 
+                    2237   2237 
+                    2238   2238 
+                    2239   2239 
+                    2240   2240 ;-----------I2C Bus 1 test ----------------------------------------------------------
+                    2241   2241 i1test:
+                    2242   2242 		;init error code
+0adf  dd 21 15 10   2243   2243 		ld	IX,temp0
+0ae3  dd 36 00 00   2244   2244 		ld	(IX+0),0	;preload error code
+0ae7  dd 36 01 05   2245   2245 		ld	(IX+1),05h	;preload test data counter (5 x write/read)
+                    2246   2246 		
+0aeb  fd 21 01 10   2247   2247 		ld	IY,scratch
+0aef  fd 36 00 f0   2248   2248 		ld	(IY+0),0F0h	;set duration of i2c expander test
+                    2249   2249 
+                    2250   2250 ;--------------write test data into flash--------------------------
+0af3  21 53 0e      2251   2251 		ld 	HL,i2cflash
+0af6  cd 0f 08      2252   2252 		call	TX_STR
+0af9  21 7d 0e      2253   2253 	    	ld	HL,NEW_LINE	;transmit new line
+0afc  cd 0f 08      2254   2254 		call	TX_STR
+                    2255   2255 
+                    2256   2256 
+0aff  cd c4 06      2257   2257 l_150:		call	I2C1_START
+                    2258   2258 
+0b02  3e a0         2259   2259 		ld	A,0A0h		;load i2c flash dev code
+0b04  cd 95 05      2260   2260 		call	I2C1_tx
+0b07  da 11 0b      2261   2261 		jp	c,l_151		;if no ackn error go l_151
+0b0a  dd 36 00 10   2262   2262 		ld	(IX+0),10h	;set err code to 10h (ackn error on flash dev select)
+0b0e  c3 be 0b      2263   2263 		jp	EO_i1test
+                    2264   2264 		
+0b11  97            2265   2265 l_151:		sub	A		;address 0 is to be written
+0b12  cd 95 05      2266   2266 		call	I2C1_tx
+0b15  da 1f 0b      2267   2267 		jp	c,l_152		;if no ackn error go l_152
+0b18  dd 36 00 11   2268   2268 		ld	(IX+0),11h	;set err code to 11h (ackn error on flash mem addr select)
+0b1c  c3 be 0b      2269   2269 		jp	EO_i1test
+                    2270   2270 
+0b1f  dd 7e 01      2271   2271 l_152:		ld	A,(IX+1)	;write test data to mem address
+0b22  cd 95 05      2272   2272 		call	I2C1_tx
+0b25  da 2f 0b      2273   2273 		jp	c,l_153		;if no ackn error go l_153
+0b28  dd 36 00 12   2274   2274 		ld	(IX+0),12h	;set err code to 12h (ackn error on data write)
+0b2c  c3 be 0b      2275   2275 		jp	EO_i1test
+                    2276   2276 
+0b2f  cd d5 06      2277   2277 l_153:		call	I2C1_STOP
+                    2278   2278 
+                    2279   2279 ;--------------read test data from flash----------------------------
+0b32  cd 3b 08      2280   2280 lesen:		call	wait_2
+Z80-Assembler		Release 1.4				Page 39
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0b35  cd c4 06      2281   2281 		call	I2C1_START
+                    2282   2282 
+0b38  3e a0         2283   2283 		ld	A,0A0h		;load i2c flash dev code
+0b3a  cd 95 05      2284   2284 		call	I2C1_tx
+0b3d  da 47 0b      2285   2285 		jp	c,l_154		;if no ackn error go l_154
+0b40  dd 36 00 13   2286   2286 		ld	(IX+0),13h	;set err code to 13h (ackn error on flash dev select)
+0b44  c3 be 0b      2287   2287 		jp	EO_i1test
+                    2288   2288 
+0b47  97            2289   2289 l_154:		sub	A		;address 0 is to be read		
+0b48  cd 95 05      2290   2290 		call	I2C1_tx
+                    2291   2291 ;		scf			;for
+                    2292   2292 ;		ccf			;debug only !
+0b4b  da 55 0b      2293   2293 		jp	c,l_1541	;if no ackn error go l_1541
+0b4e  dd 36 00 14   2294   2294 		ld	(IX+0),14h	;set err code to 14h (ackn error on flash mem addr select)
+0b52  c3 be 0b      2295   2295 		jp	EO_i1test
+                    2296   2296 		
+                    2297   2297 l_1541:		;restart I2C bus 0
+0b55  cd 25 06      2298   2298 		call	SCL1_IN		;SCL0 = H
+0b58  cd c4 06      2299   2299 		call	I2C1_START
+                    2300   2300 
+                    2301   2301 		;resend 8bit device select code
+0b5b  3e a1         2302   2302 		ld	a,0A1h		;load i2c flash dev code with r/w bit set
+0b5d  cd 95 05      2303   2303 		call	I2C1_tx
+                    2304   2304 ;		scf			;for
+                    2305   2305 ;		ccf			;debug only !
+0b60  da 6a 0b      2306   2306 		jp	c,l_1542	;if no ackn error go l_1542
+0b63  dd 36 00 15   2307   2307 		ld	(IX+0),15h	;set err code to 15h (ackn error on flash mem addr select)
+0b67  c3 be 0b      2308   2308 		jp	EO_i1test
+                    2309   2309 
+0b6a  cd a6 06      2310   2310 l_1542:		call	I2C1_RX		;returns with slave data byte in C
+0b6d  dd 7e 01      2311   2311 		ld	A,(IX+1)
+                    2312   2312 ;		inc	A		;for debug only
+0b70  b9            2313   2313 		cp	C
+0b71  ca 7b 0b      2314   2314 		jp	z,l_1543	;if no ackn error go l_1542
+0b74  dd 36 00 16   2315   2315 		ld	(IX+0),16h	;set err code to 16h (error on flash data read)
+0b78  c3 be 0b      2316   2316 		jp	EO_i1test
+                    2317   2317 	
+0b7b  cd d5 06      2318   2318 l_1543:		call	I2C1_STOP
+0b7e  dd 35 01      2319   2319 		dec	(IX+1)		;test data counter - 1
+                    2320   2320 					;when 0 reached i2c flash test done, leaving data 01h at 
+                    2321   2321 					;address 00h of flash
+0b81  c2 ff 0a      2322   2322 		jp	nz,l_150
+                    2323   2323 
+                    2324   2324 ;-------------write to i2c expander------------------------------		
+                    2325   2325 
+0b84  21 62 0e      2326   2326 		ld 	HL,i2cpio	
+0b87  cd 0f 08      2327   2327 		call	TX_STR
+0b8a  21 7d 0e      2328   2328 	    	ld	HL,NEW_LINE	;transmit new line
+0b8d  cd 0f 08      2329   2329 		call	TX_STR
+                    2330   2330 
+0b90  cd c4 06      2331   2331 		call	I2C1_START
+                    2332   2332 
+0b93  3e 40         2333   2333 l_156:		ld	A,040h		;load i2c expander dev code
+0b95  cd 95 05      2334   2334 		call	I2C1_tx
+0b98  da a2 0b      2335   2335 		jp	c,l_155		;if no ackn error go l_155
+0b9b  dd 36 00 17   2336   2336 		ld	(IX+0),17h	;set err code to 17h (ackn error on expander dev select)
+0b9f  c3 be 0b      2337   2337 		jp	EO_i1test
+                    2338   2338 		
+0ba2  dd 7e 01      2339   2339 l_155:		ld	A,(IX+1)	;load test data into device
+0ba5  cd 95 05      2340   2340 		call	I2C1_tx
+Z80-Assembler		Release 1.4				Page 40
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0ba8  da b2 0b      2341   2341 		jp	c,l_157		;if no ackn error go l_157
+0bab  dd 36 00 18   2342   2342 		ld	(IX+0),18h	;set err code to 18h (ackn error on expander data write)
+0baf  c3 be 0b      2343   2343 		jp	EO_i1test
+0bb2  dd 34 01      2344   2344 l_157:		inc 	(IX+1)		;inc test data counter
+0bb5  c2 a2 0b      2345   2345 		jp	nz,l_155	;end loop on overflow of test data counter
+                    2346   2346 		
+0bb8  fd 35 00      2347   2347 		dec	(IY+0)		;IY points to duration value of this test
+0bbb  c2 a2 0b      2348   2348 		jp	nz,l_155	
+                    2349   2349 		;FFh is left on data port of expander
+                    2350   2350 		    		
+0bbe  cd d5 06      2351   2351 EO_i1test:	call	I2C1_STOP
+                    2352   2352 		
+                    2353   2353 		;transmit error code to host
+0bc1  3a 15 10      2354   2354 		ld	a,(temp0)
+0bc4  cd d4 08      2355   2355 		call	APP_ACCU	;append value to STD_OUT
+0bc7  cd 08 08      2356   2356 		call	TX_STD_OUT	;TX input value to host
+                    2357   2357 
+0bca  c9            2358   2358 		ret
+                    2359   2359 
+                    2360   2360 ;---------PIO test---------------------------
+                    2361   2361 p_test:
+0bcb  21 72 0e      2362   2362 		ld 	HL,pio_ab
+0bce  cd 0f 08      2363   2363 		call	TX_STR
+0bd1  21 7d 0e      2364   2364 	    	ld	HL,NEW_LINE	;transmit new line
+0bd4  cd 0f 08      2365   2365 		call	TX_STR
+                    2366   2366 
+0bd7  3e 0f         2367   2367 		ld	a,0fh		;port A and B in output mode
+0bd9  d3 0a         2368   2368 		out	(PIO_A_C),A
+                    2369   2369 ;		ld	a,0fh
+0bdb  d3 0b         2370   2370 		out	(PIO_B_C),A
+                    2371   2371 
+                    2372   2372 
+0bdd  06 a0         2373   2373 		ld	B,0A0h		;set duration of test
+0bdf  21 00 00      2374   2374 l_pt1:		ld	HL,0000h	;set start value
+0be2  11 01 00      2375   2375 		ld	DE,0001h	;set step widht
+0be5  7d            2376   2376 l_pt0:		ld	A,L
+0be6  d3 08         2377   2377 		out	(PIO_A_D),A	;load lowbyte into port A
+0be8  7c            2378   2378 		ld	A,H
+0be9  f6 0c         2379   2379 		or	0Ch		;set B2 and B3 high
+0beb  d3 09         2380   2380 		out	(PIO_B_D),A	;load highbyte into port B
+0bed  19            2381   2381 		ADD	HL,DE		;advance test data counter by one
+0bee  d2 e5 0b      2382   2382 		jp	nc,l_pt0
+0bf1  10 ec         2383   2383 		djnz	l_pt1
+                    2384   2384 		;FFh is left in output data register of port A and B
+                    2385   2385 
+0bf3  3e 4f         2386   2386 		ld	a,4fh		;port A and B in input mode
+0bf5  d3 0a         2387   2387 		out	(PIO_A_C),A
+0bf7  d3 0b         2388   2388 		out	(PIO_B_C),A
+0bf9  c9            2389   2389 		ret
+                    2390   2390 
+                    2391   2391 
+                    2392   2392 reg_dump:
+                    2393   2393 ;		call	show_reg
+                    2394   2394 ;		ex	AF,AF'
+                    2395   2395 ;		exx
+                    2396   2396 ;		call	show_reg
+                    2397   2397 ;		ex	AF,AF'
+                    2398   2398 ;		exx
+                    2399   2399 ;		ret
+                    2400   2400 
+Z80-Assembler		Release 1.4				Page 41
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    2401   2401 ;show_reg:
+                    2402   2402 
+                    2403   2403 		;backup registers in bak_xx
+0bfa  e5            2404   2404 		push	HL
+0bfb  22 06 11      2405   2405 		ld	(bak_hl),HL
+                    2406   2406 
+0bfe  f5            2407   2407 		push	AF
+0bff  e1            2408   2408 		pop	HL
+0c00  22 00 11      2409   2409 		ld	(bak_af),HL
+                    2410   2410 
+                    2411   2411 ;		push	BC
+                    2412   2412 ;		pop	HL
+0c03  ed 43 02 11   2413   2413 		ld	(bak_bc),BC
+                    2414   2414 
+                    2415   2415 ;		push	DE
+                    2416   2416 ;		pop	HL
+0c07  ed 53 04 11   2417   2417 		ld	(bak_de),DE
+                    2418   2418 
+                    2419   2419 ;		push	IX
+                    2420   2420 ;		pop	HL
+0c0b  dd 22 08 11   2421   2421 		ld	(bak_ix),IX
+                    2422   2422 
+                    2423   2423 ;		push	IY
+                    2424   2424 ;		pop	HL
+0c0f  fd 22 0a 11   2425   2425 		ld	(bak_iy),IY
+                    2426   2426 
+0c13  fd e5         2427   2427 		push	IY
+0c15  dd e5         2428   2428 		push	IX
+0c17  d5            2429   2429 		push	DE
+0c18  c5            2430   2430 		push	BC
+0c19  f5            2431   2431 		push	AF
+                    2432   2432 
+0c1a  cd dd 0c      2433   2433 		call	l_rd3		;make newline
+                    2434   2434 
+0c1d  21 00 0d      2435   2435 		ld	HL,reg_af	;announce transmission of AF
+0c20  cd 0f 08      2436   2436 		call	TX_STR
+0c23  f1            2437   2437 		pop	AF		;restore value input from port from stack
+0c24  f5            2438   2438 		push	AF
+0c25  cd d4 08      2439   2439 		call	APP_ACCU	;append value to STD_OUT
+0c28  c1            2440   2440 		pop	BC
+0c29  cd d6 0c      2441   2441 		call	l_rd1
+                    2442   2442 
+0c2c  21 05 0d      2443   2443 		ld	HL,reg_bc	;announce transmission of BC
+0c2f  cd 0f 08      2444   2444 		call	TX_STR
+0c32  f1            2445   2445 		pop	AF		;restore value input from port from stack
+0c33  f5            2446   2446 		push	AF
+0c34  cd d4 08      2447   2447 		call	APP_ACCU	;append value to STD_OUT
+0c37  c1            2448   2448 		pop	BC
+0c38  cd d6 0c      2449   2449 		call	l_rd1
+                    2450   2450 
+0c3b  21 0a 0d      2451   2451 		ld	HL,reg_de	;announce transmission of DE
+0c3e  cd 0f 08      2452   2452 		call	TX_STR
+0c41  f1            2453   2453 		pop	AF		;restore value input from port from stack
+0c42  f5            2454   2454 		push	AF
+0c43  cd d4 08      2455   2455 		call	APP_ACCU	;append value to STD_OUT
+0c46  c1            2456   2456 		pop	BC
+0c47  cd d6 0c      2457   2457 		call	l_rd1
+                    2458   2458 
+0c4a  21 14 0d      2459   2459 		ld	HL,reg_ix	;announce transmission of IX
+0c4d  cd 0f 08      2460   2460 		call	TX_STR
+Z80-Assembler		Release 1.4				Page 42
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0c50  f1            2461   2461 		pop	AF		;restore value input from port from stack
+0c51  f5            2462   2462 		push	AF
+0c52  cd d4 08      2463   2463 		call	APP_ACCU	;append value to STD_OUT
+0c55  c1            2464   2464 		pop	BC
+0c56  cd d6 0c      2465   2465 		call	l_rd1
+                    2466   2466 
+0c59  21 19 0d      2467   2467 		ld	HL,reg_iy	;announce transmission of IY
+0c5c  cd 0f 08      2468   2468 		call	TX_STR
+0c5f  f1            2469   2469 		pop	AF		;restore value input from port from stack
+0c60  f5            2470   2470 		push	AF
+0c61  cd d4 08      2471   2471 		call	APP_ACCU	;append value to STD_OUT
+0c64  c1            2472   2472 		pop	BC
+0c65  cd d6 0c      2473   2473 		call	l_rd1
+                    2474   2474 
+0c68  21 0f 0d      2475   2475 		ld	HL,reg_hl	;announce transmission of HL
+0c6b  cd 0f 08      2476   2476 		call	TX_STR
+0c6e  f1            2477   2477 		pop	AF		;restore value input from port from stack
+0c6f  f5            2478   2478 		push	AF
+0c70  cd d4 08      2479   2479 		call	APP_ACCU	;append value to STD_OUT
+0c73  c1            2480   2480 		pop	BC
+0c74  cd d6 0c      2481   2481 		call	l_rd1
+                    2482   2482 
+                    2483   2483 		;get return address
+                    2484   2484 ;		pop	DE
+0c77  e1            2485   2485 		pop	HL
+0c78  22 0c 11      2486   2486 		ld	(bak_pc),HL
+0c7b  e5            2487   2487 		push	HL
+                    2488   2488 ;		push	DE
+                    2489   2489 
+0c7c  21 1e 0d      2490   2490 		ld	HL,reg_pc	;announce transmission of PC
+0c7f  cd 0f 08      2491   2491 		call	TX_STR
+0c82  2a 0c 11      2492   2492 		ld	HL,(bak_pc)
+0c85  7c            2493   2493 		ld	A,H
+0c86  cd d4 08      2494   2494 		call	APP_ACCU	;append value to STD_OUT
+0c89  2a 0c 11      2495   2495 		ld	HL,(bak_pc)
+0c8c  7d            2496   2496 		ld	A,L
+0c8d  cd d7 0c      2497   2497 		call	l_rd2
+                    2498   2498 
+0c90  21 23 0d      2499   2499 		ld	HL,reg_sp	;announce transmission of SP
+0c93  cd 0f 08      2500   2500 		call	TX_STR
+0c96  ed 73 0e 11   2501   2501 		ld	(bak_sp),SP
+0c9a  2a 0e 11      2502   2502 		ld	HL,(bak_sp)
+                    2503   2503 ;		inc	HL
+                    2504   2504 ;		inc	HL
+0c9d  23            2505   2505 		inc	HL
+0c9e  23            2506   2506 		inc	HL
+0c9f  22 0e 11      2507   2507 		ld	(bak_sp),HL	;correct bak_sp to value previous to register_dump call
+0ca2  7c            2508   2508 		ld	A,H
+0ca3  cd d4 08      2509   2509 		call	APP_ACCU	;append value to STD_OUT
+0ca6  2a 0e 11      2510   2510 		ld	HL,(bak_sp)
+0ca9  7d            2511   2511 		ld	A,L
+0caa  cd d7 0c      2512   2512 		call	l_rd2
+                    2513   2513 
+0cad  21 28 0d      2514   2514 		ld	HL,reg_ir	;announce transmission of IR
+0cb0  cd 0f 08      2515   2515 		call	TX_STR
+0cb3  ed 57         2516   2516 		ld	A,I
+0cb5  cd d4 08      2517   2517 		call	APP_ACCU	;append value to STD_OUT
+0cb8  ed 5f         2518   2518 		ld	A,R
+0cba  cd d7 0c      2519   2519 		call	l_rd2
+                    2520   2520 
+Z80-Assembler		Release 1.4				Page 43
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    2521   2521 
+                    2522   2522 		;restore registers
+0cbd  ed 4b 02 11   2523   2523 		ld	BC,(bak_bc)
+0cc1  ed 5b 04 11   2524   2524 		ld	DE,(bak_de)
+0cc5  fd 2a 08 11   2525   2525 		ld	IY,(bak_ix)
+0cc9  dd 2a 0a 11   2526   2526 		ld	IX,(bak_iy)
+0ccd  2a 00 11      2527   2527 		ld	HL,(bak_af)
+0cd0  e5            2528   2528 		push	HL
+0cd1  f1            2529   2529 		pop	AF
+0cd2  2a 06 11      2530   2530 		ld	HL,(bak_hl)
+                    2531   2531 	
+                    2532   2532 
+                    2533   2533 
+0cd5  c9            2534   2534 		ret
+                    2535   2535 
+                    2536   2536 l_rd1:
+0cd6  79            2537   2537 		ld	a,c
+0cd7  cd d4 08      2538   2538 l_rd2:		call	APP_ACCU	;append value to STD_OUT
+0cda  cd 08 08      2539   2539 		call	TX_STD_OUT	;TX input value to host
+0cdd  21 7d 0e      2540   2540 l_rd3:		ld	HL,NEW_LINE	;transmit new line
+0ce0  cd 0f 08      2541   2541 		call	TX_STR
+0ce3  c9            2542   2542 		ret
+                    2543   2543 
+                    2544   2544 
+                    2545   2545 ;-------TEXT BEGIN---------------------------------------------------
+                    2546   2546 Welcome:
+0ce4  0c            2547   2547 	DEFB	0Ch	;CLS
+0ce5  54 52 41 49   2548   2548 	DEFM	'TRAIN-Z V9.5 ready' ;sys version
+0ce9  4e 2d 5a 20   2548   2549
+0ced  56 39 2e 35   2548   2550
+0cf1  20 72 65 61   2548   2551
+0cf5  64 79         2548   2552
+0cf7  00            2549   2553 	DEFB	0
+                    2550   2554 	
+0cf8  0a            2551   2555 prompt:	DEFB	0Ah	;next line
+0cf9  0d            2552   2556 	DEFB	0Dh	;cursor home
+0cfa  63 6d 64 3e   2553   2557 	DEFM	'cmd> '
+0cfe  20            2553   2558
+0cff  00            2554   2559 	DEFB	0
+                    2555   2560 
+                    2556   2561 reg_af:
+0d00  41 46 3a 20   2557   2562 	DEFM	'AF: '
+0d04  00            2558   2563 	DEFB	0
+                    2559   2564 
+                    2560   2565 reg_bc:
+0d05  42 43 3a 20   2561   2566 	DEFM	'BC: '
+0d09  00            2562   2567 	DEFB	0
+                    2563   2568 
+                    2564   2569 reg_de:
+0d0a  44 45 3a 20   2565   2570 	DEFM	'DE: '
+0d0e  00            2566   2571 	DEFB	0
+                    2567   2572 
+                    2568   2573 reg_hl:
+0d0f  48 4c 3a 20   2569   2574 	DEFM	'HL: '
+0d13  00            2570   2575 	DEFB	0
+                    2571   2576 
+                    2572   2577 reg_ix:
+0d14  49 58 3a 20   2573   2578 	DEFM	'IX: '
+0d18  00            2574   2579 	DEFB	0
+                    2575   2580 
+Z80-Assembler		Release 1.4				Page 44
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    2576   2581 reg_iy:
+0d19  49 59 3a 20   2577   2582 	DEFM	'IY: '
+0d1d  00            2578   2583 	DEFB	0
+                    2579   2584 
+                    2580   2585 reg_pc:
+0d1e  50 43 3a 20   2581   2586 	DEFM	'PC: '
+0d22  00            2582   2587 	DEFB	0
+                    2583   2588 
+                    2584   2589 reg_sp:
+0d23  53 50 3a 20   2585   2590 	DEFM	'SP: '
+0d27  00            2586   2591 	DEFB	0
+                    2587   2592 
+                    2588   2593 reg_ir:
+0d28  49 52 3a 20   2589   2594 	DEFM	'IR: '
+0d2c  00            2590   2595 	DEFB	0
+                    2591   2596 
+                    2592   2597 error:
+0d2d  2e 2e 2e 3f   2593   2598 	DEFM	'...?'
+0d31  00            2594   2599 	DEFB	0
+                    2595   2600 
+                    2596   2601 mem_adr16:
+0d32  6d 65 6d 5f   2597   2602 	DEFM	'mem_adr: '
+0d36  61 64 72 3a   2597   2603
+0d3a  20            2597   2604
+0d3b  00            2598   2605 	DEFB	0	
+                    2599   2606 
+                    2600   2607 source16:
+0d3c  73 6f 75 72   2601   2608 	DEFM	'source_adr: '
+0d40  63 65 5f 61   2601   2609
+0d44  64 72 3a 20   2601   2610
+0d48  00            2602   2611 	DEFB	0	
+                    2603   2612 
+                    2604   2613 destin16:
+0d49  64 65 73 74   2605   2614 	DEFM	'destination_adr: '
+0d4d  69 6e 61 74   2605   2615
+0d51  69 6f 6e 5f   2605   2616
+0d55  61 64 72 3a   2605   2617
+0d59  20            2605   2618
+0d5a  00            2606   2619 	DEFB	0	
+                    2607   2620 	
+                    2608   2621 count16:
+0d5b  6e 75 6d 62   2609   2622 	DEFM	'number_of_bytes: '
+0d5f  65 72 5f 6f   2609   2623
+0d63  66 5f 62 79   2609   2624
+0d67  74 65 73 3a   2609   2625
+0d6b  20            2609   2626
+0d6c  00            2610   2627 	DEFB	0	
+                    2611   2628 
+                    2612   2629 new_dat:
+0d6d  6e 65 77 5f   2613   2630 	DEFM	'new_dat: '
+0d71  64 61 74 3a   2613   2631
+0d75  20            2613   2632
+0d76  00            2614   2633 	DEFB	0h
+                    2615   2634 
+                    2616   2635 AWT_TRM:
+0d77  70 6c 65 61   2617   2636 	DEFM	'please send file via xmodem !'
+0d7b  73 65 20 73   2617   2637
+0d7f  65 6e 64 20   2617   2638
+0d83  66 69 6c 65   2617   2639
+0d87  20 76 69 61   2617   2640
+Z80-Assembler		Release 1.4				Page 45
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0d8b  20 78 6d 6f   2617   2641
+0d8f  64 65 6d 20   2617   2642
+0d93  21            2617   2643
+0d94  00            2618   2644 	DEFB	0h
+                    2619   2645 
+                    2620   2646 io_adr:
+0d95  69 6f 5f 61   2621   2647 	DEFM	'io_addr: '
+0d99  64 64 72 3a   2621   2648
+0d9d  20            2621   2649
+0d9e  00            2622   2650 	DEFB	0h
+                    2623   2651 
+                    2624   2652 io_dat:
+0d9f  69 6f 5f 64   2625   2653 	DEFM	'io_data: '
+0da3  61 74 61 3a   2625   2654
+0da7  20            2625   2655
+0da8  00            2626   2656 	DEFB	0h
+                    2627   2657 
+                    2628   2658 
+                    2629   2659 ;I2C PIOs:
+                    2630   2660 p0_sel:
+0da9  70 30 5f 73   2631   2661 	DEFM	'p0_sel: '
+0dad  65 6c 3a 20   2631   2662
+0db1  00            2632   2663 	DEFB	0h
+                    2633   2664 
+                    2634   2665 p1_sel:
+0db2  70 31 5f 73   2635   2666 	DEFM	'p1_sel: '
+0db6  65 6c 3a 20   2635   2667
+0dba  00            2636   2668 	DEFB	0h
+                    2637   2669 
+                    2638   2670 p0_out:
+0dbb  70 30 5f 6f   2639   2671 	DEFM	'p0_out: '
+0dbf  75 74 3a 20   2639   2672
+0dc3  00            2640   2673 	DEFB	0h
+                    2641   2674 
+                    2642   2675 p1_out:
+0dc4  70 31 5f 6f   2643   2676 	DEFM	'p1_out: '
+0dc8  75 74 3a 20   2643   2677
+0dcc  00            2644   2678 	DEFB	0h
+                    2645   2679 
+                    2646   2680 p0_in:
+0dcd  70 30 5f 69   2647   2681 	DEFM	'p0_in:  '
+0dd1  6e 3a 20 20   2647   2682
+0dd5  00            2648   2683 	DEFB	0h
+                    2649   2684 
+                    2650   2685 p1_in:
+0dd6  70 31 5f 69   2651   2686 	DEFM	'p1_in:  '
+0dda  6e 3a 20 20   2651   2687
+0dde  00            2652   2688 	DEFB	0h
+                    2653   2689 
+                    2654   2690 ;I2C FLASHs
+                    2655   2691 f0_sel:
+0ddf  66 30 5f 73   2656   2692 	DEFM	'f0_sel: '
+0de3  65 6c 3a 20   2656   2693
+0de7  00            2657   2694 	DEFB	0h
+                    2658   2695 
+                    2659   2696 f1_sel:
+0de8  66 31 5f 73   2660   2697 	DEFM	'f1_sel: '
+0dec  65 6c 3a 20   2660   2698
+0df0  00            2661   2699 	DEFB	0h
+                    2662   2700 
+Z80-Assembler		Release 1.4				Page 46
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+                    2663   2701 f0_adr:
+0df1  66 30 5f 61   2664   2702 	DEFM	'f0_adr: '
+0df5  64 72 3a 20   2664   2703
+0df9  00            2665   2704 	DEFB	0h
+                    2666   2705 
+                    2667   2706 f1_adr:
+0dfa  66 31 5f 61   2668   2707 	DEFM	'f1_adr: '
+0dfe  64 72 3a 20   2668   2708
+0e02  00            2669   2709 	DEFB	0h
+                    2670   2710 
+                    2671   2711 f0_daw:
+0e03  66 30 5f 64   2672   2712 	DEFM	'f0_daw: '
+0e07  61 77 3a 20   2672   2713
+0e0b  00            2673   2714 	DEFB	0h
+                    2674   2715 
+                    2675   2716 f1_daw:
+0e0c  66 31 5f 64   2676   2717 	DEFM	'f1_daw: '
+0e10  61 77 3a 20   2676   2718
+0e14  00            2677   2719 	DEFB	0h
+                    2678   2720 
+                    2679   2721 f0_dar:
+0e15  66 30 5f 64   2680   2722 	DEFM	'f0_dar: '
+0e19  61 72 3a 20   2680   2723
+0e1d  00            2681   2724 	DEFB	0h
+                    2682   2725 
+                    2683   2726 f1_dar:
+0e1e  66 31 5f 64   2684   2727 	DEFM	'f1_dar: '
+0e22  61 72 3a 20   2684   2728
+0e26  00            2685   2729 	DEFB	0h
+                    2686   2730 
+0e27  66 6c 61 73   2687   2731 fl_id:	DEFM	'flash-id: '
+0e2b  68 2d 69 64   2687   2732
+0e2f  3a 20         2687   2733
+0e31  00            2688   2734 	DEFB	0h
+                    2689   2735 
+0e32  70 61 67 65   2690   2736 page:	DEFM	'page: '
+0e36  3a 20         2690   2737
+0e38  00            2691   2738 	DEFB	0h
+                    2692   2739 
+0e39  20 61 74 3a   2693   2740 at:	DEFM	' at: '
+0e3d  20            2693   2741
+0e3e  00            2694   2742 	DEFB	0h
+                    2695   2743 
+0e3f  20 65 78 70   2696   2744 expect:	DEFM	' expected: '
+0e43  65 63 74 65   2696   2745
+0e47  64 3a 20      2696   2746
+0e4a  00            2697   2747 	DEFB	0h
+                    2698   2748 
+0e4b  20 72 65 61   2699   2749 read:	DEFM	' read: '
+0e4f  64 3a 20      2699   2750
+0e52  00            2700   2751 	DEFB	0h
+                    2701   2752 
+                    2702   2753 i2cflash:
+0e53  49 32 43 20   2703   2754 	DEFM	'I2C SEEPROM...'
+0e57  53 45 45 50   2703   2755
+0e5b  52 4f 4d 2e   2703   2756
+0e5f  2e 2e         2703   2757
+0e61  00            2704   2758 	DEFB	0h
+                    2705   2759 
+                    2706   2760 i2cpio:
+Z80-Assembler		Release 1.4				Page 47
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0e62  49 32 43 20   2707   2761 	DEFM	'I2C Expander...'
+0e66  45 78 70 61   2707   2762
+0e6a  6e 64 65 72   2707   2763
+0e6e  2e 2e 2e      2707   2764
+0e71  00            2708   2765 	DEFB	0h
+                    2709   2766 
+                    2710   2767 pio_ab:
+0e72  50 49 4f 20   2711   2768 	DEFM	'PIO A/B...'
+0e76  41 2f 42 2e   2711   2769
+0e7a  2e 2e         2711   2770
+0e7c  00            2712   2771 	DEFB	0h
+                    2713   2772 
+                    2714   2773 
+                    2715   2774 NEW_LINE:
+0e7d  0d            2716   2775 	DEFB	0Dh	;next line
+0e7e  0a            2717   2776 	DEFB	0Ah	;cursor home
+0e7f  00            2718   2777 	DEFB	0
+                    2719   2778 
+                    2720   2779 ;STR_TERM:
+                    2721   2780 	;DEFB	0Ah	;next line
+                    2722   2781 	;DEFB	0Dh	;cursor home
+                    2723   2782 ;	DEFB	20h
+                    2724   2783 ;	DEFB	20h
+                    2725   2784 ;	DEFB	08h
+                    2726   2785 ;	DEFB	08h
+                    2727   2786 ;	DEFB	0
+                    2728   2787 			
+                    2729   2788 BS_SP_BS:
+0e80  08            2730   2789  	DEFB  	08h		;BSP
+0e81  20            2731   2790 	DEFB	20h		;SPACE
+0e82  08            2732   2791 	DEFB	08h		;BSP
+0e83  00            2733   2792 	DEFB	0
+                    2734   2793 
+                    2735   2794 2xBS:
+0e84  08            2736   2795  	DEFB  	08h		;BSP
+0e85  08            2737   2796 	DEFB	08h		;BSP
+0e86  00            2738   2797 	DEFB	0
+                    2739   2798 
+                    2740   2799 	
+                    2741   2800 ;-------COMMAND SET begin----------------------------------------		
+                    2742   2801 
+                    2743   2802 HELP:	
+0e87  68 65 6c 70   2744   2803 	DEFM	'help'
+0e8b  0d            2745   2804 	DEFB	0Dh
+                    2746   2805 
+                    2747   2806 CMD_SET:
+                    2748   2807 
+                    2749   2808 POUT:
+0e8c  70 6f 72 74   2750   2809 	DEFM	'portout'
+0e90  6f 75 74      2750   2810
+0e93  0d            2751   2811 	DEFB	0Dh	;cursor home
+0e94  0a            2752   2812 	DEFB	0Ah	;next line
+                    2753   2813 
+                    2754   2814 PIN:
+0e95  70 6f 72 74   2755   2815 	DEFM	'portin'
+0e99  69 6e         2755   2816
+0e9b  0d            2756   2817 	DEFB	0Dh	;cursor home
+0e9c  0a            2757   2818 	DEFB	0Ah	;next line
+                    2758   2819 
+                    2759   2820 RSTI2C0:
+Z80-Assembler		Release 1.4				Page 48
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0e9d  72 73 74 69   2760   2821 	DEFM	'rsti0'
+0ea1  30            2760   2822
+0ea2  0d            2761   2823 	DEFB	0Dh	;cursor home
+0ea3  0a            2762   2824 	DEFB	0Ah	;next line
+                    2763   2825 
+                    2764   2826 RSTI2C1:
+0ea4  72 73 74 69   2765   2827 	DEFM	'rsti1'
+0ea8  31            2765   2828
+0ea9  0d            2766   2829 	DEFB	0Dh	;cursor home
+0eaa  0a            2767   2830 	DEFB	0Ah	;next line
+                    2768   2831 
+                    2769   2832 I2C0F:
+0eab  69 30 66      2770   2833 	DEFM	'i0f'
+0eae  0d            2771   2834 	DEFB	0Dh	;cursor home
+0eaf  0a            2772   2835 	DEFB	0Ah	;next line
+                    2773   2836 
+                    2774   2837 I2C0P:
+0eb0  69 30 70      2775   2838 	DEFM	'i0p'
+0eb3  0d            2776   2839 	DEFB	0Dh	;cursor home
+0eb4  0a            2777   2840 	DEFB	0Ah	;next line
+                    2778   2841 
+                    2779   2842 I2C1F:
+0eb5  69 31 66      2780   2843 	DEFM	'i1f'	
+0eb8  0d            2781   2844 	DEFB	0Dh	;cursor home
+0eb9  0a            2782   2845 	DEFB	0Ah	;next line
+                    2783   2846 
+                    2784   2847 I2C1P:
+0eba  69 31 70      2785   2848 	DEFM	'i1p'
+0ebd  0d            2786   2849 	DEFB	0Dh	;cursor home
+0ebe  0a            2787   2850 	DEFB	0Ah	;next line
+                    2788   2851 
+                    2789   2852 VIEW_MEM:
+0ebf  76 69 65 77   2790   2853 	DEFM	'viewmem'
+0ec3  6d 65 6d      2790   2854
+0ec6  0d            2791   2855 	DEFB	0Dh	;cursor home
+0ec7  0a            2792   2856 	DEFB	0Ah	;next line
+                    2793   2857 	
+                    2794   2858 cmp:	
+0ec8  63 6f 6d 70   2795   2859 	DEFM	'comp'
+0ecc  0d            2796   2860 	DEFB	0Dh	;cursor home
+0ecd  0a            2797   2861 	DEFB	0Ah	;next line
+                    2798   2862 
+                    2799   2863 copy:
+0ece  63 6f 70 79   2800   2864 	DEFM	'copy'
+0ed2  0d            2801   2865 	DEFB	0Dh	;cursor home
+0ed3  0a            2802   2866 	DEFB	0Ah	;next line
+                    2803   2867 
+                    2804   2868 fill:
+0ed4  66 69 6c 6c   2805   2869 	DEFM	'fill'
+0ed8  0d            2806   2870 	DEFB	0Dh	;cursor home
+0ed9  0a            2807   2871 	DEFB	0Ah	;next line
+                    2808   2872 
+                    2809   2873 PRG_FL:
+0eda  70 72 67 66   2810   2874 	DEFM	'prgflash'
+0ede  6c 61 73 68   2810   2875
+0ee2  0d            2811   2876 	DEFB	0Dh	;cursor home
+0ee3  0a            2812   2877 	DEFB	0Ah	;next line
+                    2813   2878 
+                    2814   2879 erf:
+0ee4  65 72 61 73   2815   2880 	DEFM	'eraseflash'
+Z80-Assembler		Release 1.4				Page 49
+Source file: train-z95_gpl.asm
+Title:       
+
+LOC   OBJECT CODE   LINE   STMT SOURCE CODE
+0ee8  65 66 6c 61   2815   2881
+0eec  73 68         2815   2882
+0eee  0d            2816   2883 	DEFB	0Dh	;cursor home
+0eef  0a            2817   2884 	DEFB	0Ah	;next line
+                    2818   2885 
+                    2819   2886 RAM_S:
+0ef0  74 65 73 74   2820   2887 	DEFM	'testmem'
+0ef4  6d 65 6d      2820   2888
+0ef7  0d            2821   2889 	DEFB	0Dh	;cursor home
+0ef8  0a            2822   2890 	DEFB	0Ah	;next line
+                    2823   2891 
+                    2824   2892 DLD:	
+0ef9  6c 6f 61 64   2825   2893 	DEFM	'load'
+0efd  0d            2826   2894 	DEFB	0Dh	;cursor home
+0efe  0a            2827   2895 	DEFB	0Ah	;next line
+                    2828   2896 
+                    2829   2897 ca_usr_prg:
+0eff  63 61 6c 6c   2830   2898 	DEFM	'call'
+0f03  0d            2831   2899 	DEFB	0Dh	;cursor home
+0f04  0a            2832   2900 	DEFB	0Ah	;next line
+                    2833   2901 
+                    2834   2902 EO:	
+0f05  65 63 68 6f   2835   2903 	DEFM	'echooff'
+0f09  6f 66 66      2835   2904
+0f0c  0d            2836   2905 	DEFB	0Dh	;cursor home
+0f0d  0a            2837   2906 	DEFB	0Ah	;next line
+                    2838   2907 
+                    2839   2908 i2c1_test:
+0f0e  74 65 73 74   2840   2909 	DEFM	'testi1'
+0f12  69 31         2840   2910
+0f14  0d            2841   2911 	DEFB	0Dh	;cursor home
+0f15  0a            2842   2912 	DEFB	0Ah	;next line
+                    2843   2913 
+                    2844   2914 pio_test:
+0f16  74 65 73 74   2845   2915 	DEFM	'testpio'
+0f1a  70 69 6f      2845   2916
+0f1d  0d            2846   2917 	DEFB	0Dh	;cursor home
+0f1e  0a            2847   2918 	DEFB	0Ah	;next line
+                    2848   2919 
+                    2849   2920 
+                    2850   2921 CMDs_END:
+0f1f  00            2851   2922 	DEFB	0h
+                    2852   2923 
+                    2853   2924 
+                    2854   2925 
