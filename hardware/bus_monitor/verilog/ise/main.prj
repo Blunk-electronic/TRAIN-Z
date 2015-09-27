@@ -1,0 +1,5 @@
+verilog work "reg_file_z80.v"
+verilog work "prescaler.v"
+verilog verilog "edge_detector.v"
+verilog verilog "debouncer.v"
+verilog work "main.v"

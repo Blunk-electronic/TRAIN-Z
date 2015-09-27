@@ -1,0 +1,105 @@
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 
+xst -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -ifn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.xst" -ofn "/home/luno/ise-projects/bsc_v3/Z80_IF/main.syr" 
+ngdbuild -ise "Z80_IF.ise" -intstyle ise -dd _ngo -i -p xc95288xl-TQ144-6 main.ngc main.ngd  
+cpldfit -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -p xc95288xl-6-TQ144 -ofmt vhdl -optimize speed -loc on -slew fast -init low -inputs 54 -pterms 25 -unused float -power std -terminate keeper main.ngd 
+tsim -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise main main.nga 
+taengine -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -intstyle ise -f main -l main.tim -e \home\luno\ise-projects\bsc_v3\Z80_IF\taengine.err 
+hprep6 -ise "/home/luno/ise-projects/bsc_v3/Z80_IF/Z80_IF.ise" -s IEEE1149 -n main -i main 

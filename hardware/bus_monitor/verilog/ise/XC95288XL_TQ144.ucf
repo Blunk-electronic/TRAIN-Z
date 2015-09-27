@@ -1,0 +1,136 @@
+
+#2012-07-05
+#V1.0
+
+NET "A_CPU<15>"       LOC =  "S:PIN2";
+NET "A_CPU<14>"       LOC =  "S:PIN3";
+NET "A_CPU<13>"       LOC =  "S:PIN4";
+NET "A_CPU<12>"       LOC =  "S:PIN5";
+NET "A_CPU<11>"       LOC =  "S:PIN6";
+NET "A_CPU<10>"       LOC =  "S:PIN7";
+NET "A_CPU<9>"       LOC =  "S:PIN9";
+NET "A_CPU<8>"       LOC =  "S:PIN10";
+NET "A_CPU<7>"       LOC =  "S:PIN11";
+NET "A_CPU<6>"       LOC =  "S:PIN12";
+NET "A_CPU<5>"      LOC =  "S:PIN13";
+NET "A_CPU<4>"      LOC =  "S:PIN14";
+NET "A_CPU<3>"      LOC =  "S:PIN15";
+NET "A_CPU<2>"      LOC =  "S:PIN16";
+NET "A_CPU<1>"      LOC =  "S:PIN17";
+NET "A_CPU<0>"      LOC =  "S:PIN19";
+
+NET "D_CPU<7>"       LOC =  "S:PIN20";
+NET "D_CPU<6>"       LOC =  "S:PIN21";
+NET "D_CPU<5>"       LOC =  "S:PIN22";
+NET "D_CPU<4>"       LOC =  "S:PIN23";
+NET "D_CPU<3>"       LOC =  "S:PIN24";
+NET "D_CPU<2>"       LOC =  "S:PIN25";
+NET "D_CPU<1>"       LOC =  "S:PIN26";
+NET "D_CPU<0>"       LOC =  "S:PIN27";
+
+NET "BUS_ACK_CPU"    LOC =  "S:PIN45";
+NET "BUS_REQ_CPU"    LOC =  "S:PIN43";
+NET "NMI_CPU"        LOC =  "S:PIN48";
+NET "INT_CPU"        LOC =  "S:PIN44";
+
+NET "CLK_CPU"        LOC =  "S:PIN38";
+NET "CLK_OSC"        LOC =  "S:PIN30";
+NET "RSV_GCK2"			LOC =	 "S:PIN32";
+
+NET "HALT_CPU"       LOC =  "S:PIN40";
+NET "IEI_CPU"        LOC =  "S:PIN46";
+NET "IO_REQ_CPU"     LOC =  "S:PIN35";
+NET "M1_CPU"         LOC =  "S:PIN28";
+NET "MEM_REQ_CPU"    LOC =  "S:PIN31";
+
+NET "RD_CPU"         LOC =  "S:PIN33";
+NET "WR_CPU"         LOC =  "S:PIN34";
+NET "RESET_CPU"      LOC =  "S:PIN143";
+NET "RFSH_CPU"       LOC =  "S:PIN39";
+NET "WAIT_CPU"       LOC =  "S:PIN41";
+#fertich
+
+NET "A_EX<0>"        LOC =  "S:PIN142";
+NET "A_EX<10>"       LOC =  "S:PIN131";
+NET "A_EX<11>"       LOC =  "S:PIN130";
+NET "A_EX<12>"       LOC =  "S:PIN129";
+NET "A_EX<13>"       LOC =  "S:PIN128";
+NET "A_EX<14>"       LOC =  "S:PIN126";
+NET "A_EX<15>"       LOC =  "S:PIN125";
+NET "A_EX<1>"        LOC =  "S:PIN140";
+NET "A_EX<2>"        LOC =  "S:PIN139";
+NET "A_EX<3>"        LOC =  "S:PIN138";
+NET "A_EX<4>"        LOC =  "S:PIN137";
+NET "A_EX<5>"        LOC =  "S:PIN136";
+NET "A_EX<6>"        LOC =  "S:PIN135";
+NET "A_EX<7>"        LOC =  "S:PIN134";
+NET "A_EX<8>"        LOC =  "S:PIN133";
+NET "A_EX<9>"        LOC =  "S:PIN132";
+
+NET "D_EX<0>"        LOC =  "S:PIN124";
+NET "D_EX<1>"        LOC =  "S:PIN121";
+NET "D_EX<2>"        LOC =  "S:PIN120";
+NET "D_EX<3>"        LOC =  "S:PIN119";
+NET "D_EX<4>"        LOC =  "S:PIN118";
+NET "D_EX<5>"        LOC =  "S:PIN117";
+NET "D_EX<6>"        LOC =  "S:PIN116";
+NET "D_EX<7>"        LOC =  "S:PIN115";
+
+NET "BUS_ACK_EX"     LOC =  "S:PIN98";
+NET "CLK_EX"         LOC =  "S:PIN97";
+NET "WAIT_EX"        LOC =  "S:PIN101";
+NET "NMI_EX"         LOC =  "S:PIN111";
+NET "INT_EX"         LOC =  "S:PIN112";
+NET "BUS_REQ_EX"     LOC =  "S:PIN100";
+NET "HALT_EX"        LOC =  "S:PIN102";
+NET "IEI_EX"         LOC =  "S:PIN113";
+NET "IO_REQ_EX"      LOC =  "S:PIN106";
+NET "M1_EX"          LOC =  "S:PIN96";
+NET "MEM_REQ_EX"     LOC =  "S:PIN107";
+NET "RD_EX"          LOC =  "S:PIN105";
+NET "WR_EX"          LOC =  "S:PIN104";
+NET "RESET_EX"       LOC =  "S:PIN110";
+NET "RFSH_EX"        LOC =  "S:PIN103";
+
+NET "DEBUG_0"        LOC =  "S:PIN79";
+NET "DEBUG_1"        LOC =  "S:PIN78";
+NET "DEBUG_2"        LOC =  "S:PIN77";
+NET "DEBUG_3"        LOC =  "S:PIN76";
+NET "DEBUG_4"        LOC =  "S:PIN75";
+NET "DEBUG_5"        LOC =  "S:PIN74";
+NET "DEBUG_6"        LOC =  "S:PIN58";
+NET "DEBUG_7"        LOC =  "S:PIN59";
+NET "DEBUG_8"        LOC =  "S:PIN60";
+NET "DEBUG_9"        LOC =  "S:PIN61";
+NET "DEBUG_10"       LOC =  "S:PIN64";
+NET "DEBUG_11"       LOC =  "S:PIN71";
+
+NET "SEG_OUT<0>"     LOC =  "S:PIN87";
+NET "SEG_OUT<1>"     LOC =  "S:PIN86";
+NET "SEG_OUT<2>"     LOC =  "S:PIN85";
+NET "SEG_OUT<3>"     LOC =  "S:PIN83";
+NET "SEG_OUT<4>"     LOC =  "S:PIN82";
+NET "SEG_OUT<5>"     LOC =  "S:PIN81";
+NET "SEG_OUT<6>"     LOC =  "S:PIN80";
+
+NET "AC_SEL<0>"      LOC =  "S:PIN94";
+NET "AC_SEL<1>"      LOC =  "S:PIN92";
+NET "AC_SEL<2>"      LOC =  "S:PIN91";
+NET "AC_SEL<3>"      LOC =  "S:PIN88";
+NET "AC_SEL<4>"      LOC =  "S:PIN95";
+NET "AC_SEL<5>"      LOC =  "S:PIN93";
+
+NET "PIO<0>"         LOC =  "S:PIN49";
+NET "PIO<1>"         LOC =  "S:PIN50";
+NET "PIO<2>"         LOC =  "S:PIN51";
+NET "PIO<3>"         LOC =  "S:PIN52";
+NET "PIO<4>"         LOC =  "S:PIN53";
+NET "PIO<5>"         LOC =  "S:PIN54";
+NET "PIO<6>"         LOC =  "S:PIN56";
+NET "PIO<7>"         LOC =  "S:PIN57";
+
+NET "SWITCH<0>"      LOC =  "S:PIN70";
+NET "SWITCH<1>"      LOC =  "S:PIN69";
+NET "SWITCH<2>"      LOC =  "S:PIN68";
+NET "rsv_300"      	LOC =  "S:PIN66";
+

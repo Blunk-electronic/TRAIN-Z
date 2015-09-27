@@ -1,0 +1,368 @@
+Release 11.1 - xst L.33 (lin)
+Copyright (c) 1995-2009 Xilinx, Inc.  All rights reserved.
+--> 
+Parameter TMPDIR set to xst/projnav.tmp
+
+
+Total REAL time to Xst completion: 0.00 secs
+Total CPU time to Xst completion: 0.08 secs
+ 
+--> 
+Parameter xsthdpdir set to xst
+
+
+Total REAL time to Xst completion: 0.00 secs
+Total CPU time to Xst completion: 0.08 secs
+ 
+--> 
+Reading design: main.prj
+
+TABLE OF CONTENTS
+  1) Synthesis Options Summary
+  2) HDL Compilation
+  3) Design Hierarchy Analysis
+  4) HDL Analysis
+  5) HDL Synthesis
+     5.1) HDL Synthesis Report
+  6) Advanced HDL Synthesis
+     6.1) Advanced HDL Synthesis Report
+  7) Low Level Synthesis
+  8) Partition Report
+  9) Final Report
+
+=========================================================================
+*                      Synthesis Options Summary                        *
+=========================================================================
+---- Source Parameters
+Input File Name                    : "main.prj"
+Input Format                       : mixed
+Ignore Synthesis Constraint File   : NO
+
+---- Target Parameters
+Output File Name                   : "main"
+Output Format                      : NGC
+Target Device                      : XC9500XL CPLDs
+
+---- Source Options
+Top Module Name                    : main
+Automatic FSM Extraction           : YES
+FSM Encoding Algorithm             : Auto
+Safe Implementation                : No
+Mux Extraction                     : YES
+Resource Sharing                   : YES
+
+---- Target Options
+Add IO Buffers                     : YES
+MACRO Preserve                     : YES
+XOR Preserve                       : YES
+Equivalent register Removal        : YES
+
+---- General Options
+Optimization Goal                  : Speed
+Optimization Effort                : 1
+Library Search Order               : main.lso
+Keep Hierarchy                     : YES
+Netlist Hierarchy                  : as_optimized
+RTL Output                         : Yes
+Hierarchy Separator                : /
+Bus Delimiter                      : <>
+Case Specifier                     : maintain
+Verilog 2001                       : YES
+
+---- Other Options
+Clock Enable                       : YES
+wysiwyg                            : NO
+
+=========================================================================
+
+
+=========================================================================
+*                          HDL Compilation                              *
+=========================================================================
+Compiling verilog file "reg_file_z80.v" in library work
+Compiling verilog file "prescaler.v" in library work
+Module <reg_file_z80> compiled
+Compiling verilog file "main.v" in library work
+Module <prescaler> compiled
+Module <main> compiled
+Compiling verilog file "edge_detector.v" in library verilog
+Compiling verilog file "debouncer.v" in library verilog
+Module <edge_detector> compiled
+Module <debouncer> compiled
+No errors in compilation
+Analysis of file <"main.prj"> succeeded.
+ 
+
+=========================================================================
+*                     Design Hierarchy Analysis                         *
+=========================================================================
+Analyzing hierarchy for module <main> in library <work>.
+
+Analyzing hierarchy for module <prescaler> in library <work>.
+
+Analyzing hierarchy for module <debouncer> in library <verilog>.
+
+Analyzing hierarchy for module <reg_file_z80> in library <work> with parameters.
+	BASE_ADR = "01010000"
+	reg_0 = "00000000000000000000000001010000"
+	reg_1 = "00000000000000000000000001010001"
+	reg_2 = "00000000000000000000000001010010"
+
+Analyzing hierarchy for module <edge_detector> in library <verilog>.
+
+
+=========================================================================
+*                            HDL Analysis                               *
+=========================================================================
+Analyzing top module <main>.
+Module <main> is correct for synthesis.
+ 
+    Set user-defined property "INIT =  1" for instance <FDCPE_inst> in unit <main>.
+Analyzing module <prescaler> in library <work>.
+Module <prescaler> is correct for synthesis.
+ 
+Analyzing module <debouncer> in library <verilog>.
+Module <debouncer> is correct for synthesis.
+ 
+Analyzing module <reg_file_z80> in library <work>.
+	BASE_ADR = 8'b01010000
+	reg_0 = 32'b00000000000000000000000001010000
+	reg_1 = 32'b00000000000000000000000001010001
+	reg_2 = 32'b00000000000000000000000001010010
+Module <reg_file_z80> is correct for synthesis.
+ 
+Analyzing module <edge_detector> in library <verilog>.
+Module <edge_detector> is correct for synthesis.
+ 
+
+=========================================================================
+*                           HDL Synthesis                               *
+=========================================================================
+
+Performing bidirectional port resolution...
+
+Synthesizing Unit <prescaler>.
+    Related source file is "prescaler.v".
+    Found 14-bit up counter for signal <ct>.
+    Summary:
+	inferred   1 Counter(s).
+Unit <prescaler> synthesized.
+
+
+Synthesizing Unit <debouncer>.
+    Related source file is "debouncer.v".
+    Found 3-bit up counter for signal <count>.
+    Found 3-bit comparator less for signal <count$cmp_lt0000> created at line 35.
+    Summary:
+	inferred   1 Counter(s).
+	inferred   1 Comparator(s).
+Unit <debouncer> synthesized.
+
+
+Synthesizing Unit <reg_file_z80>.
+    Related source file is "reg_file_z80.v".
+    Found 8-bit tristate buffer for signal <pio<7:0>>.
+    Found 8-bit tristate buffer for signal <d_cpu>.
+    Found 24-bit register for signal <out_reg>.
+    Found 3-bit register for signal <read_en>.
+    Summary:
+	inferred  27 D-type flip-flop(s).
+	inferred  32 Tristate(s).
+Unit <reg_file_z80> synthesized.
+
+
+Synthesizing Unit <edge_detector>.
+    Related source file is "edge_detector.v".
+    Found 1-bit register for signal <cat>.
+    Found 2-bit up counter for signal <ct>.
+    Summary:
+	inferred   1 Counter(s).
+	inferred   1 D-type flip-flop(s).
+Unit <edge_detector> synthesized.
+
+
+Synthesizing Unit <main>.
+    Related source file is "main.v".
+WARNING:Xst:647 - Input <RSV_GCK2> is never used. This port will be preserved and left unconnected if it belongs to a top-level block or it belongs to a sub-block and the hierarchy of this sub-block is preserved.
+    Found 16x7-bit ROM for signal <seg_out_pre>.
+    Found 16-bit tristate buffer for signal <A_EX>.
+    Found 1-bit tristate buffer for signal <BUS_ACK_EX>.
+    Found 1-bit tristate buffer for signal <BUS_REQ_CPU>.
+    Found 1-bit tristate buffer for signal <DEBUG_0>.
+    Found 1-bit tristate buffer for signal <DEBUG_1>.
+    Found 1-bit tristate buffer for signal <DEBUG_2>.
+    Found 8-bit tristate buffer for signal <D_CPU>.
+    Found 8-bit tristate buffer for signal <D_EX>.
+    Found 1-bit tristate buffer for signal <IEI_EX>.
+    Found 1-bit tristate buffer for signal <INT_CPU>.
+    Found 1-bit tristate buffer for signal <NMI_CPU>.
+    Found 1-bit tristate buffer for signal <WAIT_CPU>.
+    Found 6-bit register for signal <ac_sel_pre>.
+    Found 8-bit comparator greater for signal <cpu_io_read_access$cmp_gt0000> created at line 231.
+    Found 4-bit register for signal <dec_in>.
+    Found 3-bit up counter for signal <digit>.
+    Summary:
+	inferred   1 ROM(s).
+	inferred   1 Counter(s).
+	inferred   1 Comparator(s).
+	inferred  42 Tristate(s).
+Unit <main> synthesized.
+
+
+=========================================================================
+HDL Synthesis Report
+
+Macro Statistics
+# ROMs                                                 : 1
+ 16x7-bit ROM                                          : 1
+# Counters                                             : 18
+ 14-bit up counter                                     : 1
+ 2-bit up counter                                      : 12
+ 3-bit up counter                                      : 5
+# Registers                                            : 41
+ 1-bit register                                        : 39
+ 4-bit register                                        : 1
+ 6-bit register                                        : 1
+# Comparators                                          : 5
+ 3-bit comparator less                                 : 4
+ 8-bit comparator greater                              : 1
+# Tristates                                            : 24
+ 1-bit tristate buffer                                 : 18
+ 16-bit tristate buffer                                : 1
+ 8-bit tristate buffer                                 : 5
+
+=========================================================================
+
+=========================================================================
+*                       Advanced HDL Synthesis                          *
+=========================================================================
+
+
+=========================================================================
+Advanced HDL Synthesis Report
+
+Macro Statistics
+# ROMs                                                 : 1
+ 16x7-bit ROM                                          : 1
+# Counters                                             : 18
+ 14-bit up counter                                     : 1
+ 2-bit up counter                                      : 12
+ 3-bit up counter                                      : 5
+# Registers                                            : 40
+ Flip-Flops                                            : 40
+
+=========================================================================
+
+=========================================================================
+*                         Low Level Synthesis                           *
+=========================================================================
+WARNING:Xst:1348 - Unit reg_file_z80 is merged (output interface has tristates)
+WARNING:Xst:2183 - Unit main: the following tristate(s) are NOT replaced by logic (Please refer to Answer Record 20048 for more information): D_CPU<0>_MLTSRCEDGE, D_CPU<1>_MLTSRCEDGE, D_CPU<2>_MLTSRCEDGE, D_CPU<3>_MLTSRCEDGE, D_CPU<4>_MLTSRCEDGE, D_CPU<5>_MLTSRCEDGE, D_CPU<6>_MLTSRCEDGE, D_CPU<7>_MLTSRCEDGE, WAIT_CPU_MLTSRCEDGE.
+
+Optimizing unit <main> ...
+  implementation constraint: INIT=1	 : FDCPE_inst
+  implementation constraint: INIT=s	 : rf/out_reg_23
+  implementation constraint: INIT=s	 : rf/out_reg_22
+  implementation constraint: INIT=s	 : rf/out_reg_21
+  implementation constraint: INIT=s	 : rf/out_reg_20
+  implementation constraint: INIT=s	 : rf/out_reg_19
+  implementation constraint: INIT=s	 : rf/out_reg_18
+  implementation constraint: INIT=s	 : rf/out_reg_17
+  implementation constraint: INIT=s	 : rf/out_reg_16
+  implementation constraint: INIT=s	 : rf/out_reg_15
+  implementation constraint: INIT=s	 : rf/out_reg_14
+  implementation constraint: INIT=s	 : rf/out_reg_13
+  implementation constraint: INIT=s	 : rf/out_reg_12
+  implementation constraint: INIT=s	 : rf/out_reg_11
+  implementation constraint: INIT=s	 : rf/out_reg_10
+  implementation constraint: INIT=s	 : rf/out_reg_9
+  implementation constraint: INIT=s	 : rf/out_reg_8
+  implementation constraint: INIT=s	 : rf/out_reg_7
+  implementation constraint: INIT=s	 : rf/out_reg_6
+  implementation constraint: INIT=s	 : rf/out_reg_5
+  implementation constraint: INIT=s	 : rf/out_reg_4
+  implementation constraint: INIT=s	 : rf/out_reg_3
+  implementation constraint: INIT=s	 : rf/out_reg_2
+  implementation constraint: INIT=s	 : rf/out_reg_1
+  implementation constraint: INIT=s	 : rf/out_reg_0
+  implementation constraint: INIT=s	 : rf/read_en_2
+  implementation constraint: INIT=s	 : rf/read_en_1
+  implementation constraint: INIT=s	 : rf/read_en_0
+
+Optimizing unit <prescaler> ...
+
+Optimizing unit <debouncer> ...
+
+Optimizing unit <edge_detector> ...
+WARNING:Xst:2677 - Node <ct_10> of sequential type is unconnected in block <ps>.
+WARNING:Xst:2677 - Node <ct_11> of sequential type is unconnected in block <ps>.
+WARNING:Xst:2677 - Node <ct_12> of sequential type is unconnected in block <ps>.
+WARNING:Xst:2677 - Node <ct_13> of sequential type is unconnected in block <ps>.
+
+=========================================================================
+*                           Partition Report                             *
+=========================================================================
+
+Partition Implementation Status
+-------------------------------
+
+  No Partitions were found in this design.
+
+-------------------------------
+
+=========================================================================
+*                            Final Report                               *
+=========================================================================
+Final Results
+RTL Top Level Output File Name     : main.ngr
+Top Level Output File Name         : main
+Output Format                      : NGC
+Optimization Goal                  : Speed
+Keep Hierarchy                     : YES
+Target Technology                  : XC9500XL CPLDs
+Macro Preserve                     : YES
+XOR Preserve                       : YES
+Clock Enable                       : YES
+wysiwyg                            : NO
+
+Design Statistics
+# IOs                              : 117
+
+Cell Usage :
+# BELS                             : 868
+#      AND2                        : 261
+#      AND3                        : 45
+#      AND4                        : 5
+#      GND                         : 5
+#      INV                         : 351
+#      OR2                         : 149
+#      OR3                         : 6
+#      VCC                         : 13
+#      XOR2                        : 33
+# FlipFlops/Latches                : 99
+#      FD                          : 50
+#      FDC                         : 36
+#      FDCE                        : 12
+#      FDCPE                       : 1
+# Tri-States                       : 34
+#      BUFE                        : 34
+# IO Buffers                       : 116
+#      IBUF                        : 36
+#      IOBUFE                      : 28
+#      OBUF                        : 31
+#      OBUFE                       : 21
+=========================================================================
+
+
+Total REAL time to Xst completion: 4.00 secs
+Total CPU time to Xst completion: 4.21 secs
+ 
+--> 
+
+
+Total memory usage is 135532 kilobytes
+
+Number of errors   :    0 (   0 filtered)
+Number of warnings :    7 (   0 filtered)
+Number of infos    :    0 (   0 filtered)
+
